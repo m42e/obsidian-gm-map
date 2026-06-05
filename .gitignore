@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Build output
+main.js
+styles.css
+
+# Misc
+*.log
+.DS_Store
+data.json
