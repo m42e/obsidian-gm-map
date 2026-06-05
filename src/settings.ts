@@ -84,6 +84,22 @@ export class GmMapSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Default label size")
+      .setDesc("Font size in pixels for token and marker labels.")
+      .addText((text) =>
+        text
+          .setPlaceholder("12")
+          .setValue(String(this.plugin.settings.defaultLabelSize))
+          .onChange(async (value) => {
+            const n = Number(value);
+            if (!Number.isNaN(n) && n > 0) {
+              this.plugin.settings.defaultLabelSize = n;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    new Setting(containerEl)
       .setName("Player screen DPI")
       .setDesc(
         "Physical pixels per inch of the player's monitor. Used to display each grid square as exactly 1 inch. Common values: 96 (standard), 109 (24\" 1080p), 163 (27\" 4K). Check your monitor specs."

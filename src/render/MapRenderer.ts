@@ -20,6 +20,7 @@ export class MapRenderer {
 
   selectedTokenId: string | null = null;
   selectedMarkerId: string | null = null;
+  labelSize = 12;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -75,12 +76,16 @@ export class MapRenderer {
       this.fog.renderGridOverlay(ctx, viewport, this.store.state.fog);
     }
 
-    // Tokens (visible to both).
+    // Tokens: players only see tokens that are both visible and in revealed fog.
     const visibleTokens =
       this.mode === "player"
-        ? this.store.state.tokens.filter((t) => t.visible)
+        ? this.store.state.tokens.filter(
+            (t) =>
+              t.visible &&
+              this.fog.isPointRevealed({ x: t.x, y: t.y }, this.store.state.fog)
+          )
         : this.store.state.tokens;
-    this.tokens.render(ctx, viewport, visibleTokens, this.selectedTokenId);
+    this.tokens.render(ctx, viewport, visibleTokens, this.selectedTokenId, this.labelSize);
 
     // Markers (DM only).
     if (this.mode === "dm") {
@@ -88,7 +93,8 @@ export class MapRenderer {
         ctx,
         viewport,
         this.store.state.markers,
-        this.selectedMarkerId
+        this.selectedMarkerId,
+        this.labelSize
       );
     }
   }

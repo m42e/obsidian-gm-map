@@ -40,8 +40,8 @@ export class MarkerEditModal extends Modal {
   ) {
     super(app);
     this.result = {
-      label: marker.label,
-      color: marker.color,
+      label: marker.label ?? "",
+      color: marker.color ?? "#d35400",
       note: marker.note,
       linkedNote: marker.linkedNote,
     };
@@ -84,32 +84,52 @@ export class MarkerEditModal extends Modal {
 
     const buttons = new Setting(contentEl);
     if (this.onDelete) {
-      buttons.addButton((b) =>
-        b
-          .setButtonText("Delete")
-          .setDestructive()
-          .onClick(() => {
+      buttons.addButton((b) => {
+        b.setButtonText("Delete");
+        if (typeof b.setDestructive === "function") {
+          b.setDestructive();
+        } else if (typeof b.setWarning === "function") {
+          b.setWarning();
+        } else {
+          b.setClass("mod-warning");
+        }
+        b.onClick(() => {
+          try {
             this.onDelete?.();
             this.close();
-          })
-      );
+          } catch (e) {
+            console.error("GM Map Error on marker delete click:", e);
+          }
+        });
+      });
     }
-    buttons
-      .addButton((b) =>
-        b.setButtonText("Cancel").onClick(() => {
+    buttons.addButton((b) => {
+      b.setButtonText("Cancel");
+      b.onClick(() => {
+        try {
           this.onSubmit(null);
           this.close();
-        })
-      )
-      .addButton((b) =>
-        b
-          .setButtonText("Save")
-          .setCta()
-          .onClick(() => {
-            this.onSubmit(this.result);
-            this.close();
-          })
-      );
+        } catch (e) {
+          console.error("GM Map Error on marker cancel click:", e);
+        }
+      });
+    });
+    buttons.addButton((b) => {
+      b.setButtonText("Save");
+      if (typeof b.setCta === "function") {
+        b.setCta();
+      } else {
+        b.setClass("mod-cta");
+      }
+      b.onClick(() => {
+        try {
+          this.onSubmit(this.result);
+          this.close();
+        } catch (e) {
+          console.error("GM Map Error on marker save click:", e);
+        }
+      });
+    });
   }
 
   onClose(): void {

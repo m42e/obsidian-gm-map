@@ -1,0 +1,28 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "build",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "npm: build",
+			"detail": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		},
+        {
+            "label": "Build & Deploy Plugin",
+            "type": "shell",
+            "command": "npm run build && cp main.js styles.css manifest.json ~/git/dnd/obsidian/DND/.obsidian/plugins/gm-player-map/",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+
+	]
+}

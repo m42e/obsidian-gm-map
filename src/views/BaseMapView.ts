@@ -53,6 +53,16 @@ export abstract class BaseMapView extends ItemView {
 
   getState(): Record<string, unknown> {
     const base = super.getState();
+    if (this.config && this.store) {
+      return {
+        ...base,
+        config: {
+          ...this.config,
+          tokens: this.store.state.tokens,
+          markers: this.store.state.markers,
+        },
+      };
+    }
     return { ...base, config: this.config };
   }
 
@@ -111,6 +121,7 @@ export abstract class BaseMapView extends ItemView {
     this.canvas = this.canvasWrap.createEl("canvas", { cls: "gm-map-canvas" });
 
     this.renderer = new MapRenderer(this.canvas, image, this.store, this.mode);
+    this.renderer.labelSize = this.plugin.settings.defaultLabelSize;
     await this.renderer.init();
     this.loadedBrush = this.store.state.fog.brush;
 
@@ -216,6 +227,8 @@ export abstract class BaseMapView extends ItemView {
     const resolvedPath =
       path.startsWith(".") && notePath
         ? resolveRelative(notePath, path)
+        : path.startsWith("/")
+        ? path.slice(1)
         : path;
     const file = this.app.vault.getAbstractFileByPath(resolvedPath);
     if (!(file instanceof TFile)) return null;

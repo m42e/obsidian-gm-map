@@ -211,7 +211,7 @@ export class DmMapView extends BaseMapView {
   private toggleGridPanel(force?: boolean): void {
     if (!this.gridPanel) return;
     const open =
-      force !== undefined ? force : !this.gridPanel.el.isShown();
+      force !== undefined ? force : this.gridPanel.el.style.display === "none";
     if (open) {
       this.gridPanel.show();
       this.setTool("pan");

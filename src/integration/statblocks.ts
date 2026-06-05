@@ -35,15 +35,29 @@ export class StatblockIntegration {
 
   /** Sorted list of creature names available in the bestiary. */
   listCreatures(): string[] {
-    const api = this.api;
-    if (!api?.bestiary) return [];
-    return Array.from(api.bestiary.keys()).sort((a, b) =>
-      a.localeCompare(b)
-    );
+    try {
+      const api = this.api;
+      if (!api || !api.bestiary) return [];
+      if (typeof api.bestiary.keys === "function") {
+        return Array.from(api.bestiary.keys()).sort((a, b) =>
+          a.localeCompare(b)
+        );
+      }
+      if (typeof api.bestiary === "object") {
+        return Object.keys(api.bestiary).sort((a, b) =>
+          a.localeCompare(b)
+        );
+      }
+    } catch (e) {
+      console.error("GM Map: failed to list creatures from bestiary", e);
+    }
+    return [];
   }
 
   hasCreature(name: string): boolean {
-    return this.api?.hasCreature(name) ?? false;
+    const api = this.api;
+    if (!api || typeof api.hasCreature !== "function") return false;
+    return api.hasCreature(name);
   }
 
   /**

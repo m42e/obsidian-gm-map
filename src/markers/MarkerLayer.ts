@@ -12,7 +12,8 @@ export class MarkerLayer {
     ctx: CanvasRenderingContext2D,
     viewport: Viewport,
     markers: Marker[],
-    selectedId: string | null
+    selectedId: string | null,
+    labelSize = 12
   ): void {
     for (const marker of markers) {
       const center = viewport.toScreen({ x: marker.x, y: marker.y });
@@ -36,14 +37,15 @@ export class MarkerLayer {
 
       if (marker.label) {
         ctx.save();
-        ctx.font = "12px sans-serif";
+        ctx.font = `${labelSize}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
         const padX = 4;
         const boxW = ctx.measureText(marker.label).width + padX * 2;
+        const boxH = labelSize + 4;
         const boxY = center.y + s + 4;
         ctx.fillStyle = "rgba(0,0,0,0.7)";
-        ctx.fillRect(center.x - boxW / 2, boxY, boxW, 16);
+        ctx.fillRect(center.x - boxW / 2, boxY, boxW, boxH);
         ctx.fillStyle = "#ffffff";
         ctx.fillText(marker.label, center.x, boxY + 2);
         ctx.restore();

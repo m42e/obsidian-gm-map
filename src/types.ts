@@ -121,6 +121,8 @@ export interface GmMapSettings {
   defaultMarkerColor: string;
   /** Physical DPI of the player's screen (used to display 1 grid cell = 1 inch). */
   playerScreenDpi: number;
+  /** Font size in pixels for token and marker labels. */
+  defaultLabelSize: number;
 }
 
 export const DEFAULT_SETTINGS: GmMapSettings = {
@@ -130,6 +132,7 @@ export const DEFAULT_SETTINGS: GmMapSettings = {
   defaultTokenColor: "#c0392b",
   defaultMarkerColor: "#f1c40f",
   playerScreenDpi: 96,
+  defaultLabelSize: 12,
 };
 
 export const STATE_VERSION = 1;

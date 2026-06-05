@@ -88,6 +88,19 @@ export class FogLayer {
     this.maskDirty = true;
   }
 
+  /**
+   * Returns true when the given image-space point lies in a revealed area.
+   * Used to hide tokens under fog in the player view.
+   */
+  isPointRevealed(p: Point, fog: FogData): boolean {
+    if (this.maskDirty) this.rebuildMask(fog);
+    const x = Math.round(p.x);
+    const y = Math.round(p.y);
+    if (x < 0 || y < 0 || x >= this.maskCanvas.width || y >= this.maskCanvas.height) return false;
+    const pixel = this.maskCtx.getImageData(x, y, 1, 1).data;
+    return pixel[3] > 0;
+  }
+
   private rebuildMask(fog: FogData): void {
     const ctxm = this.maskCtx;
     ctxm.clearRect(0, 0, this.maskCanvas.width, this.maskCanvas.height);

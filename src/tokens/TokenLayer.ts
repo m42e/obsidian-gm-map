@@ -7,7 +7,8 @@ export class TokenLayer {
     ctx: CanvasRenderingContext2D,
     viewport: Viewport,
     tokens: Token[],
-    selectedId: string | null
+    selectedId: string | null,
+    labelSize = 12
   ): void {
     for (const token of tokens) {
       const center = viewport.toScreen({ x: token.x, y: token.y });
@@ -32,15 +33,16 @@ export class TokenLayer {
 
       // Label below the token.
       if (token.label) {
-        ctx.font = "12px sans-serif";
+        ctx.font = `${labelSize}px sans-serif`;
         ctx.textBaseline = "top";
         const text = token.label;
         const padX = 4;
         const metrics = ctx.measureText(text);
         const boxW = metrics.width + padX * 2;
+        const boxH = labelSize + 4;
         const boxY = center.y + r + 4;
         ctx.fillStyle = "rgba(0,0,0,0.7)";
-        ctx.fillRect(center.x - boxW / 2, boxY, boxW, 16);
+        ctx.fillRect(center.x - boxW / 2, boxY, boxW, boxH);
         ctx.fillStyle = "#ffffff";
         ctx.fillText(text, center.x, boxY + 2);
       }
