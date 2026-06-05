@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
   "description": "Show a TTRPG map to your players on a second screen with DM-controlled fog of war, statblock-linked tokens, and DM-only markers.",
-  "author": "m42e",
+  "author": "Matthias Bilger (m42e)",  
   "authorUrl": "https://github.com/m42e",
   "isDesktopOnly": true
 }
