@@ -2,8 +2,8 @@
 node_modules/
 
 # Build output
-main.js
-styles.css
+/main.js
+/styles.css
 
 # Misc
 *.log
