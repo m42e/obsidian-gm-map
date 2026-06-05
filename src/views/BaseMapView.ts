@@ -52,7 +52,7 @@ export abstract class BaseMapView extends ItemView {
   // ---- View state persistence (survives reloads) ----
 
   getState(): Record<string, unknown> {
-    const base = super.getState() as Record<string, unknown>;
+    const base = super.getState();
     return { ...base, config: this.config };
   }
 

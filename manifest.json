@@ -1,7 +1,7 @@
 {
   "id": "gm-map",
   "name": "GM Map",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "minAppVersion": "1.13.0",
   "description": "Show a TTRPG map to your players on a second screen with DM-controlled fog of war, statblock-linked tokens, and DM-only markers.",
   "author": "Matthias Bilger (m42e)",  
