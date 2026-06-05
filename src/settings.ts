@@ -13,7 +13,7 @@ export class GmMapSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl).setName("General").setHeading();
+    new Setting(containerEl).setName("Display Settings").setHeading();
 
     new Setting(containerEl)
       .setName("Default grid size")
