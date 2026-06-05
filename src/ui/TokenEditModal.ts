@@ -80,7 +80,7 @@ export class TokenEditModal extends Modal {
       buttons.addButton((b) =>
         b
           .setButtonText("Delete")
-          .setWarning()
+          .setDestructive()
           .onClick(() => {
             this.onDelete?.();
             this.close();

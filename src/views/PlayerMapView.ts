@@ -33,6 +33,15 @@ export class PlayerMapView extends BaseMapView {
     return false;
   }
 
+  async onOpen(): Promise<void> {
+    this.containerEl.ownerDocument.body.addClass("gm-map-player-popout");
+  }
+
+  async onClose(): Promise<void> {
+    this.containerEl.ownerDocument.body.removeClass("gm-map-player-popout");
+    await super.onClose();
+  }
+
   protected buildChrome(root: HTMLElement): void {
     root.createDiv({ cls: "gm-map-player-dragbar" });
   }

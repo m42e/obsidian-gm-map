@@ -7,7 +7,7 @@ import { App, Component } from "obsidian";
 interface StatblockAPI {
   render(creature: unknown, el: HTMLDivElement, display?: string): Component;
   hasCreature(name: string): boolean;
-  getCreatureFromBestiary(name: string): unknown | null;
+  getCreatureFromBestiary(name: string): unknown;
   bestiary: Map<string, unknown>;
 }
 

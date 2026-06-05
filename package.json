@@ -1,6 +1,6 @@
 {
   "name": "gm-map",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Show a TTRPG map to your players with DM-controlled fog of war, statblock-linked tokens, and DM-only markers.",
   "main": "main.js",
   "scripts": {
@@ -17,7 +17,6 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "builtin-modules": "^3.3.0",
     "esbuild": "^0.20.0",
     "obsidian": "latest",
     "tslib": "^2.6.2",

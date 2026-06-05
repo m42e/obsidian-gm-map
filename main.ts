@@ -43,12 +43,12 @@ export default class GmMapPlugin extends Plugin {
     this.addSettingTab(new GmMapSettingTab(this.app, this));
   }
 
-  async onunload(): Promise<void> {
+  onunload(): void {
     this.registry?.flushAll();
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) as Partial<GmMapSettings>);
   }
 
   async saveSettings(): Promise<void> {
@@ -79,7 +79,7 @@ export default class GmMapPlugin extends Plugin {
         return state?.config?.id === config.id;
       });
     if (existing) {
-      this.app.workspace.revealLeaf(existing);
+      await this.app.workspace.revealLeaf(existing);
       return;
     }
     const leaf = this.app.workspace.getLeaf("tab");
@@ -88,7 +88,7 @@ export default class GmMapPlugin extends Plugin {
       active: true,
       state: { config },
     });
-    this.app.workspace.revealLeaf(leaf);
+    await this.app.workspace.revealLeaf(leaf);
   }
 
   /** Open (or focus) the player view in a pop-out window for the second screen. */
@@ -100,7 +100,7 @@ export default class GmMapPlugin extends Plugin {
         return state?.config?.id === config.id;
       });
     if (existing) {
-      this.app.workspace.revealLeaf(existing);
+      await this.app.workspace.revealLeaf(existing);
       return;
     }
     const leaf = this.app.workspace.getLeaf("window");
@@ -109,6 +109,6 @@ export default class GmMapPlugin extends Plugin {
       active: true,
       state: { config },
     });
-    this.app.workspace.revealLeaf(leaf);
+    await this.app.workspace.revealLeaf(leaf);
   }
 }

@@ -35,7 +35,7 @@ export class StatblockPanel {
 
   show(token: Token): void {
     this.clearRendered();
-    this.el.style.display = "flex";
+    this.el.show();
     this.titleEl.setText(token.label || token.creature || "Token");
 
     this.bodyEl.empty();
@@ -68,12 +68,12 @@ export class StatblockPanel {
 
   hide(): void {
     this.clearRendered();
-    this.el.style.display = "none";
+    this.el.hide();
   }
 
   async showMarker(marker: Marker): Promise<void> {
     this.clearRendered();
-    this.el.style.display = "flex";
+    this.el.show();
     this.titleEl.setText(marker.label || "Marker");
     this.bodyEl.empty();
 

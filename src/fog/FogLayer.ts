@@ -33,7 +33,7 @@ export class FogLayer {
   }
 
   private makeCanvas(): HTMLCanvasElement {
-    const c = document.createElement("canvas");
+    const c = activeDocument.createElement("canvas");
     c.width = Math.max(1, this.imageWidth);
     c.height = Math.max(1, this.imageHeight);
     return c;

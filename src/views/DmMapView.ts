@@ -202,7 +202,7 @@ export class DmMapView extends BaseMapView {
         this.loadedBrush = null;
         this.renderer?.fog.markDirty();
         this.renderer?.requestRender();
-      });
+      }).catch(() => { /* ignore */ });
     }
   }
 

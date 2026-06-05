@@ -1,4 +1,4 @@
-import { ItemView, TFile, WorkspaceLeaf } from "obsidian";
+import { ItemView, TFile, ViewStateResult, WorkspaceLeaf } from "obsidian";
 import type GmMapPlugin from "../../main";
 import { MapConfig } from "../types";
 import { MapStateStore, StoreEvent } from "../state/MapStateStore";
@@ -56,8 +56,8 @@ export abstract class BaseMapView extends ItemView {
     return { ...base, config: this.config };
   }
 
-  async setState(state: unknown, result: unknown): Promise<void> {
-    await super.setState(state, result as never);
+  async setState(state: unknown, result: ViewStateResult): Promise<void> {
+    await super.setState(state, result);
     const cfg = (state as { config?: MapConfig })?.config;
     if (cfg && cfg.id) {
       await this.loadMap(cfg);

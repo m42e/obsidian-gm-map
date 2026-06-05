@@ -56,12 +56,12 @@ export class GridAlignPanel {
   show(): void {
     this.restoreOverlay = !this.store.state.gridOverlay;
     if (this.restoreOverlay) this.store.setGridOverlay(true);
-    this.el.style.display = "flex";
+    this.el.show();
     this.syncInputs();
   }
 
   hide(): void {
-    this.el.style.display = "none";
+    this.el.hide();
   }
 
   private buildRow(
@@ -94,13 +94,13 @@ export class GridAlignPanel {
 
   private syncInputs(): void {
     const fog = this.store.state.fog;
-    if (document.activeElement !== this.sizeInput) {
+    if (activeDocument.activeElement !== this.sizeInput) {
       this.sizeInput.value = String(Math.round(fog.cellSize));
     }
-    if (document.activeElement !== this.offsetXInput) {
+    if (activeDocument.activeElement !== this.offsetXInput) {
       this.offsetXInput.value = String(Math.round(fog.offsetX));
     }
-    if (document.activeElement !== this.offsetYInput) {
+    if (activeDocument.activeElement !== this.offsetYInput) {
       this.offsetYInput.value = String(Math.round(fog.offsetY));
     }
   }

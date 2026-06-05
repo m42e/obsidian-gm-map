@@ -325,39 +325,31 @@
 }
 
 /* ============ Player view pop-out: borderless / no tab strip ============ */
-.is-popout-window .workspace-tabs:has(
-  .workspace-leaf-content[data-type="gm-map-player-view"]
-) .workspace-tab-header-container {
+/* .gm-map-player-popout is added to body by PlayerMapView.onOpen()         */
+.gm-map-player-popout .workspace-tab-header-container {
   display: none;
 }
 
-.is-popout-window
+.gm-map-player-popout
   .workspace-leaf-content[data-type="gm-map-player-view"]
   .view-header {
   display: none;
 }
 
-.is-popout-window .workspace-tabs:has(
-  .workspace-leaf-content[data-type="gm-map-player-view"]
-) .workspace-leaf {
+.gm-map-player-popout .workspace-leaf {
   border: none;
   box-shadow: none;
 }
 
 /* Force every ancestor to fill the full pop-out window */
-.is-popout-window:has(.workspace-leaf-content[data-type="gm-map-player-view"])
-  .workspace,
-.is-popout-window:has(.workspace-leaf-content[data-type="gm-map-player-view"])
-  .workspace-split,
-.is-popout-window:has(.workspace-leaf-content[data-type="gm-map-player-view"])
-  .workspace-tabs,
-.is-popout-window:has(.workspace-leaf-content[data-type="gm-map-player-view"])
-  .workspace-tab-container,
-.is-popout-window:has(.workspace-leaf-content[data-type="gm-map-player-view"])
-  .workspace-leaf,
-.is-popout-window
+.gm-map-player-popout .workspace,
+.gm-map-player-popout .workspace-split,
+.gm-map-player-popout .workspace-tabs,
+.gm-map-player-popout .workspace-tab-container,
+.gm-map-player-popout .workspace-leaf,
+.gm-map-player-popout
   .workspace-leaf-content[data-type="gm-map-player-view"],
-.is-popout-window
+.gm-map-player-popout
   .workspace-leaf-content[data-type="gm-map-player-view"]
   .view-content {
   flex: 1 1 auto;

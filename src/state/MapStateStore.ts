@@ -54,7 +54,7 @@ function createEmptyFog(config: MapConfig): FogData {
   );
   return {
     ...geom,
-    revealed: new Array(geom.cols * geom.rows).fill(false),
+    revealed: new Array<boolean>(geom.cols * geom.rows).fill(false),
     brush: null,
   };
 }
@@ -118,7 +118,7 @@ export class MapStateStore {
       ...geom,
       revealed: keepRevealed
         ? fog.revealed
-        : new Array(geom.cols * geom.rows).fill(false),
+        : new Array<boolean>(geom.cols * geom.rows).fill(false),
       brush: fog?.brush ?? null,
     };
     state.tokens = Array.isArray(state.tokens) ? state.tokens : [];
@@ -225,7 +225,7 @@ export class MapStateStore {
       ...geom,
       revealed: sameLattice
         ? fog.revealed
-        : new Array(geom.cols * geom.rows).fill(false),
+        : new Array<boolean>(geom.cols * geom.rows).fill(false),
       brush: fog.brush,
     };
     this.emit("grid");

@@ -42,7 +42,7 @@ export class MapRenderer {
   /** Schedule a render on the next animation frame (coalesces bursts). */
   requestRender(): void {
     if (this.rafHandle !== null) return;
-    this.rafHandle = requestAnimationFrame(() => {
+    this.rafHandle = window.requestAnimationFrame(() => {
       this.rafHandle = null;
       this.draw();
     });
