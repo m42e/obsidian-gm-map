@@ -23,6 +23,15 @@ jobs:
           npm ci
           npm run build
 
+      - name: Verify tag matches manifest version
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          manifest_version=$(node -p "require('./manifest.json').version")
+          if [ "$tag" != "$manifest_version" ]; then
+            echo "Error: tag '$tag' does not match manifest version '$manifest_version'"
+            exit 1
+          fi
+
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
