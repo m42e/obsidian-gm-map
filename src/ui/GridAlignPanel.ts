@@ -94,13 +94,14 @@ export class GridAlignPanel {
 
   private syncInputs(): void {
     const fog = this.store.state.fog;
-    if (activeDocument.activeElement !== this.sizeInput) {
+    const activeEl = this.el.ownerDocument.activeElement;
+    if (activeEl !== this.sizeInput) {
       this.sizeInput.value = String(Math.round(fog.cellSize));
     }
-    if (activeDocument.activeElement !== this.offsetXInput) {
+    if (activeEl !== this.offsetXInput) {
       this.offsetXInput.value = String(Math.round(fog.offsetX));
     }
-    if (activeDocument.activeElement !== this.offsetYInput) {
+    if (activeEl !== this.offsetYInput) {
       this.offsetYInput.value = String(Math.round(fog.offsetY));
     }
   }

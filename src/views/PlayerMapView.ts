@@ -34,6 +34,7 @@ export class PlayerMapView extends BaseMapView {
   }
 
   async onOpen(): Promise<void> {
+    await super.onOpen();
     this.containerEl.ownerDocument.body.addClass("gm-map-player-popout");
   }
 
