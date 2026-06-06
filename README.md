@@ -9,7 +9,7 @@ An [Obsidian](https://obsidian.md) plugin for tabletop RPG game masters. Display
 ## Table of Contents
 
 - [Features](#features)
-- [Installation](#installation)
+- [Screenshots](#screenshots)
 - [Quick Start](#quick-start)
 - [Code Block Reference](#code-block-reference)
   - [Basic Options](#basic-options)
@@ -30,6 +30,7 @@ An [Obsidian](https://obsidian.md) plugin for tabletop RPG game masters. Display
 - [State Persistence](#state-persistence)
 - [Tips & Tricks](#tips--tricks)
 - [Troubleshooting](#troubleshooting)
+- [Installation](#installation)
 - [Obsidian Developer Policy Disclosures](#obsidian-developer-policy-disclosures)
 - [License](#license)
 - [Contributing](#contributing)
@@ -49,19 +50,31 @@ An [Obsidian](https://obsidian.md) plugin for tabletop RPG game masters. Display
 
 ---
 
-## Installation
+### Screenshots
 
-### From the Obsidian Community Plugin directory
+**Rendered code block in a note** — quick access to DM and Player views, with a live token/marker count.
 
-1. Open **Settings → Community plugins → Browse**
-2. Search for **GM Map**
-3. Click **Install**, then **Enable**
+![Code block rendered in a note](doc/images/in_note_view.png)
 
-### Manual installation
+**DM view** — full map visibility with toolbar, fog layer, tokens, and DM-only markers.
 
-1. Download `main.js`, `styles.css`, and `manifest.json` from the [latest release](../../releases/latest)
-2. Copy the files into your vault at `.obsidian/plugins/gm-map/`
-3. Reload Obsidian and enable the plugin under **Settings → Community plugins**
+![DM view](doc/images/gm-view.png)
+
+**DM view — marker note panel** — click any marker to read its note in the side panel without leaving the map.
+
+![DM view with marker note open](doc/images/gm-view-note.png)
+
+**DM view — statblock panel** — click a token linked to a bestiary creature to see its full statblock inline.
+
+![DM view with statblock panel open](doc/images/gm-view-token.png)
+
+**Player view** — only the areas you have revealed are visible; fog covers the rest.
+
+![Player view](doc/images/player_view.png)
+
+**Plugin settings** — configure default grid size, fog opacity, brush size, colors, label size, and player screen DPI.
+
+![Plugin settings](doc/images/settings.png)
 
 ---
 
@@ -542,6 +555,25 @@ Make sure the Statblocks plugin is enabled and your bestiary has been imported. 
 
 **Saving state is slow or fails silently.**
 The plugin writes to `.obsidian/plugins/gm-player-map/maps/`. Ensure your vault is on a writable filesystem and that Obsidian has the necessary permissions.
+
+**Map is not moving for players**
+Close GM and player view and open it again.
+
+---
+
+## Installation
+
+### From the Obsidian Community Plugin directory
+
+1. Open **Settings → Community plugins → Browse**
+2. Search for **GM Map**
+3. Click **Install**, then **Enable**
+
+### Manual installation
+
+1. Download `main.js`, `styles.css`, and `manifest.json` from the [latest release](../../releases/latest)
+2. Copy the files into your vault at `.obsidian/plugins/gm-map/`
+3. Reload Obsidian and enable the plugin under **Settings → Community plugins**
 
 ---
 

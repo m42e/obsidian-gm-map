@@ -22,6 +22,7 @@ export class DmMapView extends BaseMapView {
   private statblockPanel: StatblockPanel | null = null;
   private gridPanel: GridAlignPanel | null = null;
   private gridAlignBtn: HTMLElement | null = null;
+  private zoomSlider: HTMLInputElement | null = null;
   private toolButtons = new Map<DmTool, HTMLElement>();
 
   // Drag state.
@@ -50,6 +51,7 @@ export class DmMapView extends BaseMapView {
     this.gridPanel?.destroy();
     this.gridPanel = null;
     this.gridAlignBtn = null;
+    this.zoomSlider = null;
     super.teardown();
   }
 
@@ -105,6 +107,23 @@ export class DmMapView extends BaseMapView {
     });
     slider.value = String(this.brushSize);
     slider.oninput = () => (this.brushSize = Number(slider.value));
+
+    // Zoom slider.
+    const zoomWrap = bar.createDiv({ cls: "gm-map-brush-size" });
+    zoomWrap.createSpan({ text: "Zoom" });
+    const zoomSlider = zoomWrap.createEl("input", {
+      attr: { type: "range", min: "0", max: "100", step: "1" },
+    });
+    zoomSlider.value = "50";
+    zoomSlider.oninput = () => {
+      if (!this.renderer || !this.canvas) return;
+      const target = this.sliderToScale(Number(zoomSlider.value));
+      const factor = target / this.renderer.viewport.scale;
+      const center = { x: this.canvas.width / 2, y: this.canvas.height / 2 };
+      this.renderer.viewport.zoomAt(center, factor);
+      this.renderer.requestRender();
+    };
+    this.zoomSlider = zoomSlider;
 
     bar.createDiv({ cls: "gm-map-toolbar-sep" });
 
@@ -195,6 +214,26 @@ export class DmMapView extends BaseMapView {
     }
   }
 
+  protected onZoomChanged(): void {
+    this.syncZoomSlider();
+  }
+
+  private syncZoomSlider(): void {
+    if (this.zoomSlider && this.renderer) {
+      this.zoomSlider.value = String(this.scaleToSlider(this.renderer.viewport.scale));
+    }
+  }
+
+  private scaleToSlider(scale: number): number {
+    const lo = Math.log(0.05), hi = Math.log(8);
+    return Math.round(((Math.log(scale) - lo) / (hi - lo)) * 100);
+  }
+
+  private sliderToScale(val: number): number {
+    const lo = Math.log(0.05), hi = Math.log(8);
+    return Math.exp(lo + (val / 100) * (hi - lo));
+  }
+
   private resetFog(reveal: boolean): void {
     this.store?.resetFog(reveal);
     if (this.renderer) {
@@ -222,6 +261,7 @@ export class DmMapView extends BaseMapView {
   }
 
   protected onMapReady(): void {
+    this.syncZoomSlider();
     this.setTool("pan");
     this.statblockPanel = new StatblockPanel(
       this.canvasWrap,

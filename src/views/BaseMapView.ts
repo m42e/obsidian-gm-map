@@ -160,6 +160,11 @@ export abstract class BaseMapView extends ItemView {
     // Default: nothing.
   }
 
+  /** Hook called after any zoom change so subclasses can update UI. */
+  protected onZoomChanged(): void {
+    // Default: nothing.
+  }
+
   /** Reload the freeform brush mask if it changed externally (e.g. DM edits). */
   protected async reloadBrushIfChanged(): Promise<void> {
     if (!this.store || !this.renderer) return;
@@ -219,6 +224,7 @@ export abstract class BaseMapView extends ItemView {
       const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
       this.renderer?.viewport.zoomAt(this.eventPoint(e), factor);
       this.renderer?.requestRender();
+      this.onZoomChanged();
     });
   }
 
