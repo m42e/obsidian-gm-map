@@ -442,12 +442,11 @@ export class DmMapView extends BaseMapView {
         this.renderer.requestRender();
         break;
       case "player-pan": {
-        if (!this.store) break;
         const vp = this.renderer.viewport;
         const cur = this.store.state.playerPan ?? { x: 0, y: 0 };
         this.store.setPlayerPan(
-          cur.x - dx / vp.scale,
-          cur.y - dy / vp.scale
+          cur.x + dx / vp.scale,
+          cur.y + dy / vp.scale
         );
         break;
       }
