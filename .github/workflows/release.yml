@@ -26,6 +26,8 @@ jobs:
       - name: Verify tag matches manifest version
         run: |
           tag="${GITHUB_REF#refs/tags/}"
+          # Remove 'v' prefix if present
+          tag="${tag#v}"
           manifest_version=$(node -p "require('./manifest.json').version")
           if [ "$tag" != "$manifest_version" ]; then
             echo "Error: tag '$tag' does not match manifest version '$manifest_version'"
