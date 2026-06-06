@@ -1,12 +1,13 @@
 import { WorkspaceLeaf, setIcon } from "obsidian";
 import { BaseMapView } from "./BaseMapView";
 import { RenderMode } from "../render/MapRenderer";
-import { DmTool, Marker, Token, VIEW_TYPE_DM } from "../types";
+import { DmTool, Marker, Token, VIEW_TYPE_DM, VIEW_TYPE_PLAYER } from "../types";
 import { Point } from "../render/Viewport";
 import { StatblockPanel } from "../ui/StatblockPanel";
 import { TokenEditModal } from "../ui/TokenEditModal";
 import { MarkerEditModal } from "../ui/MarkerEditModal";
 import { GridAlignPanel } from "../ui/GridAlignPanel";
+import { PlayerMapView } from "./PlayerMapView";
 import type GmMapPlugin from "../../main";
 
 /**
@@ -231,6 +232,7 @@ export class DmMapView extends BaseMapView {
     if (this.canvasWrap) {
       this.canvasWrap.dataset.tool = tool;
     }
+    this.updatePlayerViewRect();
   }
 
   protected onZoomChanged(): void {
@@ -277,6 +279,58 @@ export class DmMapView extends BaseMapView {
       this.gridPanel.hide();
     }
     this.gridAlignBtn?.toggleClass("is-active", open);
+  }
+
+  protected handleStoreEvent(event: import("../state/MapStateStore").StoreEvent): void {
+    if (event === "pan") this.updatePlayerViewRect();
+  }
+
+  /** Compute and set the player viewport rectangle on the renderer.
+   *  The rect is only shown when the active tool is "pan" or "player-pan" and
+   *  the player view for this map is currently open. */
+  private updatePlayerViewRect(): void {
+    if (!this.renderer || !this.store || !this.config) return;
+
+    const show = this.tool === "pan" || this.tool === "player-pan";
+    if (!show) {
+      this.renderer.playerViewRect = null;
+      this.renderer.requestRender();
+      return;
+    }
+
+    const playerLeaves = this.plugin.app.workspace.getLeavesOfType(VIEW_TYPE_PLAYER);
+    const playerLeaf = playerLeaves.find((l) => {
+      const state = l.view.getState() as { config?: { id?: string } };
+      return state?.config?.id === this.config?.id;
+    });
+
+    if (!playerLeaf) {
+      this.renderer.playerViewRect = null;
+      this.renderer.requestRender();
+      return;
+    }
+
+    const playerView = playerLeaf.view as PlayerMapView;
+    const canvasW = playerView.canvasWidth;
+    const canvasH = playerView.canvasHeight;
+    if (!canvasW || !canvasH) {
+      this.renderer.playerViewRect = null;
+      this.renderer.requestRender();
+      return;
+    }
+
+    const dpi = this.plugin.settings.playerScreenDpi;
+    const cellSizePx = this.store.state.fog.cellSize;
+    const playerScale = dpi / Math.max(1, cellSizePx);
+    const pan = this.store.state.playerPan ?? { x: 0, y: 0 };
+
+    this.renderer.playerViewRect = {
+      x: pan.x,
+      y: pan.y,
+      w: canvasW / playerScale,
+      h: canvasH / playerScale,
+    };
+    this.renderer.requestRender();
   }
 
   protected onMapReady(): void {

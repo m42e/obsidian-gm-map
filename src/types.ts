@@ -127,6 +127,10 @@ export interface GmMapSettings {
   defaultLabelSize: number;
   /** Whether to snap tokens to the nearest grid cell center (or corner for even-sized creatures) by default. */
   snapToGrid: boolean;
+  /** Grid line color in hex format. */
+  gridColor: string;
+  /** Grid line width in pixels. */
+  gridLineWidth: number;
 }
 
 export const DEFAULT_SETTINGS: GmMapSettings = {
@@ -138,6 +142,8 @@ export const DEFAULT_SETTINGS: GmMapSettings = {
   playerScreenDpi: 96,
   defaultLabelSize: 12,
   snapToGrid: true,
+  gridColor: "#000000",
+  gridLineWidth: 1.5,
 };
 
 export const STATE_VERSION = 1;

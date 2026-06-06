@@ -21,6 +21,11 @@ export class MapRenderer {
   selectedTokenId: string | null = null;
   selectedMarkerId: string | null = null;
   labelSize = 12;
+  gridColor = "#000000";
+  gridLineWidth = 1.5;
+
+  /** Image-space rect representing the player's visible area. Drawn in DM mode only. */
+  playerViewRect: { x: number; y: number; w: number; h: number } | null = null;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -73,7 +78,13 @@ export class MapRenderer {
 
     // Optional grid overlay (shown on both DM and player views when enabled).
     if (this.store.state.gridOverlay) {
-      this.fog.renderGridOverlay(ctx, viewport, this.store.state.fog);
+      this.fog.renderGridOverlay(
+        ctx,
+        viewport,
+        this.store.state.fog,
+        this.gridColor,
+        this.gridLineWidth
+      );
     }
 
     // Tokens: players only see tokens that are both visible and in revealed fog.
@@ -96,6 +107,22 @@ export class MapRenderer {
         this.selectedMarkerId,
         this.labelSize
       );
+    }
+
+    // Player viewport indicator: shows the player's visible area in the DM view.
+    if (this.mode === "dm" && this.playerViewRect) {
+      const { x, y, w, h } = this.playerViewRect;
+      const tl = viewport.toScreen({ x, y });
+      const br = viewport.toScreen({ x: x + w, y: y + h });
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = "rgba(80, 180, 255, 0.06)";
+      ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.strokeStyle = "rgba(80, 180, 255, 0.9)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.restore();
     }
   }
 

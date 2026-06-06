@@ -122,6 +122,8 @@ export abstract class BaseMapView extends ItemView {
 
     this.renderer = new MapRenderer(this.canvas, image, this.store, this.mode);
     this.renderer.labelSize = this.plugin.settings.defaultLabelSize;
+    this.renderer.gridColor = this.plugin.settings.gridColor;
+    this.renderer.gridLineWidth = this.plugin.settings.gridLineWidth;
     await this.renderer.init();
     this.loadedBrush = this.store.state.fog.brush;
 
@@ -193,6 +195,10 @@ export abstract class BaseMapView extends ItemView {
     this.resizeObserver.observe(this.canvasWrap);
     resize();
   }
+
+  /** Physical pixel dimensions of the canvas (0 if not yet initialised). */
+  get canvasWidth(): number { return this.canvas?.width ?? 0; }
+  get canvasHeight(): number { return this.canvas?.height ?? 0; }
 
   /** Canvas-space point (accounting for device pixel ratio) from a mouse event. */
   protected eventPoint(e: MouseEvent): Point {

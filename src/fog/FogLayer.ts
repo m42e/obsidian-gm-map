@@ -166,7 +166,9 @@ export class FogLayer {
   renderGridOverlay(
     dest: CanvasRenderingContext2D,
     viewport: Viewport,
-    fog: FogData
+    fog: FogData,
+    gridColor: string,
+    gridLineWidth: number
   ): void {
     dest.save();
     dest.setTransform(
@@ -194,13 +196,9 @@ export class FogLayer {
       dest.moveTo(0, y);
       dest.lineTo(this.imageWidth, y);
     }
-    // Draw twice (dark then light) so the grid stays visible on both bright
-    // and dark maps, including the non-dimmed player view.
-    dest.lineWidth = 1.5 / viewport.scale;
-    dest.strokeStyle = "rgba(0,0,0,0.35)";
-    dest.stroke();
-    dest.lineWidth = 0.75 / viewport.scale;
-    dest.strokeStyle = "rgba(255,255,255,0.35)";
+    // Draw the grid using the configured color and line width.
+    dest.lineWidth = gridLineWidth / viewport.scale;
+    dest.strokeStyle = gridColor;
     dest.stroke();
     dest.setTransform(1, 0, 0, 1, 0, 0);
     dest.restore();
