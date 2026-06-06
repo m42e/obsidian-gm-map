@@ -284,6 +284,7 @@ Additional toolbar controls:
 
 - **Eye / Eye-off toggle** — switches between "reveal" mode (paint away fog) and "hide" mode (re-add fog). Applies to both fog tools.
 - **Brush size slider** — adjusts the diameter of the freeform brush in image pixels.
+- **Snap to grid toggle** (magnet icon) — when active, tokens snap to the nearest grid cell center when placed or dragged. Large creatures whose diameter covers an even number of cells (2×2, 4×4 …) snap to grid corners instead, which is the correct position for creatures that straddle four cells. Can be toggled on/off per session; the default is controlled by the **Snap tokens to grid** plugin setting.
 - **Grid overlay toggle** (layout-grid icon) — shows or hides the square grid on **both** the DM and Player views simultaneously.
 - **Save to note** button — writes the current token and marker positions back into the `gm-map` code block in your note.
 
@@ -323,7 +324,7 @@ The fog state is saved automatically to a sidecar file (`.obsidian/plugins/gm-pl
 
 1. Switch to the **Pan / select** tool.
 2. Click the token to select it (a white ring appears).
-3. Drag it to the new position.
+3. Drag it to the new position. If **Snap to grid** is enabled, the token snaps to the nearest cell center (or grid corner for large creatures) as you drag.
 
 **Editing or deleting a token:**
 
@@ -331,6 +332,15 @@ The fog state is saved automatically to a sidecar file (`.obsidian/plugins/gm-pl
 2. The token details appear in the side panel.
 3. Click **Edit** to change the label, color, size, or linked creature.
 4. Click **Delete** to remove the token.
+
+**Snap to grid:**
+
+The **Snap to grid** toggle (magnet icon in the toolbar) automatically places or snaps dragged tokens to clean grid positions:
+
+- **Medium and smaller creatures** (radius ≤ half a cell, or covering 1×1 / 3×3 cells): center snaps to the **middle** of the nearest cell.
+- **Large creatures** (diameter covering 2×2 or 4×4 cells): center snaps to the nearest **grid corner**, correctly positioning the creature over four cells.
+
+The snap tile size is derived from the token's radius relative to the map's `grid` value, so resizing a token and saving re-snaps it automatically on the next placement.
 
 **Linking a token to a bestiary creature:**
 
@@ -472,6 +482,7 @@ Open **Settings → GM Map** to configure global defaults. Per-map overrides in 
 | **Default brush size** | `120` | Starting diameter of the freeform fog brush in image pixels. |
 | **Default token color** | `#c0392b` (red) | Color applied to new tokens when no `color` is specified. |
 | **Default marker color** | `#f1c40f` (yellow) | Color applied to new markers when no `color` is specified. |
+| **Snap tokens to grid** | enabled | Default state of the snap-to-grid toggle in the DM toolbar. When on, newly placed and dragged tokens snap to grid cell centers (odd-sized creatures) or grid corners (even-sized creatures). |
 | **Player screen DPI** | `96` | Physical pixels-per-inch of the player's monitor. Used to scale the map so that one grid cell equals one physical inch on screen (useful for virtual tabletop-style play on a TV or large monitor). Common values: `96` (standard HD), `109` (24″ 1080p), `163` (27″ 4K). |
 
 ---
