@@ -499,6 +499,7 @@ export class DmMapView extends BaseMapView {
           color: result.color,
           radius: result.radius,
           creature: result.creature,
+          visible: result.visible,
         });
       },
       () => {

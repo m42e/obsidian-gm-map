@@ -121,7 +121,7 @@ export function buildMapYaml(config: MapConfig, state: MapState): string {
   const obj: Record<string, unknown> = {
     id: config.id,
     image: config.image,
-    grid: Math.round(state.fog.cellSize),
+    grid: state.fog.cellSize,
     fogOpacity: config.fogOpacity,
   };
   if (Math.round(state.fog.offsetX) !== 0) {

@@ -100,6 +100,8 @@ export interface MapState {
   markers: Marker[];
   /** Whether the grid overlay is shown (on both DM and player views). */
   gridOverlay: boolean;
+  /** Whether tokens are visible on the map. */
+  showTokens: boolean;
   /** Top-left corner of the player view in image-pixel space. Set by the DM. */
   playerPan?: { x: number; y: number };
   /**

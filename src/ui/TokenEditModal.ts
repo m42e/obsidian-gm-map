@@ -7,6 +7,7 @@ export interface TokenEditResult {
   color: string;
   radius: number;
   creature: string | undefined;
+  visible: boolean;
 }
 
 /** Modal to create or edit a token, including linking a bestiary creature. */
@@ -16,7 +17,7 @@ export class TokenEditModal extends Modal {
   constructor(
     app: App,
     private statblocks: StatblockIntegration,
-    token: Pick<Token, "label" | "color" | "radius" | "creature">,
+    token: Pick<Token, "label" | "color" | "radius" | "creature" | "visible">,
     private onSubmit: (result: TokenEditResult | null) => void,
     private onDelete?: () => void
   ) {
@@ -26,6 +27,7 @@ export class TokenEditModal extends Modal {
       color: token.color ?? "#c0392b",
       radius: token.radius ?? 30,
       creature: token.creature,
+      visible: token.visible ?? true,
     };
   }
 
@@ -50,6 +52,13 @@ export class TokenEditModal extends Modal {
             const n = Number(v);
             if (!Number.isNaN(n) && n > 0) this.result.radius = n;
           })
+        );
+
+      new Setting(contentEl)
+        .setName("Visible to players")
+        .setDesc("When off, this token is hidden from the player view.")
+        .addToggle((t) =>
+          t.setValue(this.result.visible).onChange((v) => (this.result.visible = v))
         );
 
       let creatures: string[] = [];

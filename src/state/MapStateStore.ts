@@ -86,6 +86,7 @@ export class MapStateStore {
         tokens: (config.tokens ?? []).map((t) => ({ ...t })),
         markers: (config.markers ?? []).map((m) => ({ ...m })),
         gridOverlay: config.gridOverlay ?? false,
+        showTokens: true,
         sourceSig: sigFrom(config.tokens ?? [], config.markers ?? []),
         version: STATE_VERSION,
       };
@@ -337,6 +338,7 @@ export class StoreRegistry {
       tokens: (config.tokens ?? []).map((t) => ({ ...t })),
       markers: (config.markers ?? []).map((m) => ({ ...m })),
       gridOverlay: sidecar.gridOverlay,
+      showTokens: sidecar.showTokens ?? true,
       sourceSig: sig,
       version: STATE_VERSION,
     };

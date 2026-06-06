@@ -82,7 +82,7 @@ export class GridAlignPanel {
 
     const commit = (value: number) => {
       if (Number.isNaN(value)) return;
-      apply(Math.round(value));
+      apply(value);
     };
     input.onchange = () => commit(Number(input.value));
     input.oninput = () => commit(Number(input.value));
@@ -96,7 +96,7 @@ export class GridAlignPanel {
     const fog = this.store.state.fog;
     const activeEl = this.el.ownerDocument.activeElement;
     if (activeEl !== this.sizeInput) {
-      this.sizeInput.value = String(Math.round(fog.cellSize));
+      this.sizeInput.value = String(fog.cellSize);
     }
     if (activeEl !== this.offsetXInput) {
       this.offsetXInput.value = String(Math.round(fog.offsetX));

@@ -8,13 +8,16 @@ export class TokenLayer {
     viewport: Viewport,
     tokens: Token[],
     selectedId: string | null,
-    labelSize = 12
+    labelSize = 12,
+    dmMode = false
   ): void {
     for (const token of tokens) {
       const center = viewport.toScreen({ x: token.x, y: token.y });
       const r = token.radius * viewport.scale;
+      const hidden = dmMode && !token.visible;
 
       ctx.save();
+      if (hidden) ctx.globalAlpha = 0.35;
       ctx.beginPath();
       ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
       ctx.fillStyle = token.color;
@@ -45,6 +48,19 @@ export class TokenLayer {
         ctx.fillRect(center.x - boxW / 2, boxY, boxW, boxH);
         ctx.fillStyle = "#ffffff";
         ctx.fillText(text, center.x, boxY + 2);
+      }
+
+      // Hidden indicator: diagonal slash across the token in DM mode.
+      if (hidden) {
+        ctx.globalAlpha = 0.8;
+        ctx.strokeStyle = "#ff4444";
+        ctx.lineWidth = Math.max(2, r * 0.12);
+        ctx.lineCap = "round";
+        const off = r * 0.65;
+        ctx.beginPath();
+        ctx.moveTo(center.x - off, center.y - off);
+        ctx.lineTo(center.x + off, center.y + off);
+        ctx.stroke();
       }
       ctx.restore();
     }

@@ -85,7 +85,7 @@ export class MapRenderer {
               this.fog.isPointRevealed({ x: t.x, y: t.y }, this.store.state.fog)
           )
         : this.store.state.tokens;
-    this.tokens.render(ctx, viewport, visibleTokens, this.selectedTokenId, this.labelSize);
+    this.tokens.render(ctx, viewport, visibleTokens, this.selectedTokenId, this.labelSize, this.mode === "dm");
 
     // Markers (DM only).
     if (this.mode === "dm") {
