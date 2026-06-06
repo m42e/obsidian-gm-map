@@ -125,6 +125,8 @@ export interface GmMapSettings {
   playerScreenDpi: number;
   /** Font size in pixels for token and marker labels. */
   defaultLabelSize: number;
+  /** Whether to snap tokens to the nearest grid cell center (or corner for even-sized creatures) by default. */
+  snapToGrid: boolean;
 }
 
 export const DEFAULT_SETTINGS: GmMapSettings = {
@@ -135,6 +137,7 @@ export const DEFAULT_SETTINGS: GmMapSettings = {
   defaultMarkerColor: "#f1c40f",
   playerScreenDpi: 96,
   defaultLabelSize: 12,
+  snapToGrid: true,
 };
 
 export const STATE_VERSION = 1;

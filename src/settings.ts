@@ -100,6 +100,20 @@ export class GmMapSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Snap tokens to grid")
+      .setDesc(
+        "When enabled, placing or dragging a token snaps it to the nearest grid cell center. Large (even-sized) creatures snap to the grid corner instead."
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.snapToGrid)
+          .onChange(async (value) => {
+            this.plugin.settings.snapToGrid = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
       .setName("Player screen DPI")
       .setDesc(
         "Physical pixels per inch of the player's monitor. Used to display each grid square as exactly 1 inch. Common values: 96 (standard), 109 (24\" 1080p), 163 (27\" 4K). Check your monitor specs."

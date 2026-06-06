@@ -32,9 +32,14 @@ export class DmMapView extends BaseMapView {
   private moved = false;
   private lastClient = { x: 0, y: 0 };
 
+  // Snap-to-grid state.
+  private snapToGrid = true;
+  private snapBtn: HTMLElement | null = null;
+
   constructor(leaf: WorkspaceLeaf, plugin: GmMapPlugin) {
     super(leaf, plugin);
     this.brushSize = plugin.settings.defaultBrushSize;
+    this.snapToGrid = plugin.settings.snapToGrid;
   }
 
   getViewType(): string {
@@ -52,6 +57,7 @@ export class DmMapView extends BaseMapView {
     this.gridPanel = null;
     this.gridAlignBtn = null;
     this.zoomSlider = null;
+    this.snapBtn = null;
     super.teardown();
   }
 
@@ -126,6 +132,19 @@ export class DmMapView extends BaseMapView {
     this.zoomSlider = zoomSlider;
 
     bar.createDiv({ cls: "gm-map-toolbar-sep" });
+
+    // Snap-to-grid toggle.
+    const snapBtn = bar.createEl("button", {
+      cls: "gm-map-tool",
+      attr: { title: "Snap tokens to grid" },
+    });
+    setIcon(snapBtn, "magnet");
+    snapBtn.toggleClass("is-active", this.snapToGrid);
+    snapBtn.onclick = () => {
+      this.snapToGrid = !this.snapToGrid;
+      snapBtn.toggleClass("is-active", this.snapToGrid);
+    };
+    this.snapBtn = snapBtn;
 
     // Grid overlay toggle (synced to the player view).
     const gridBtn = bar.createEl("button", {
@@ -354,7 +373,9 @@ export class DmMapView extends BaseMapView {
     const img = this.imagePoint(e);
 
     if (this.draggingTokenId) {
-      this.store.updateToken(this.draggingTokenId, { x: img.x, y: img.y });
+      const token = this.store.state.tokens.find((t) => t.id === this.draggingTokenId);
+      const snapped = token ? this.snapPoint(img, token.radius) : img;
+      this.store.updateToken(this.draggingTokenId, { x: snapped.x, y: snapped.y });
       return;
     }
     if (this.draggingMarkerId) {
@@ -460,14 +481,45 @@ export class DmMapView extends BaseMapView {
     this.store.setBrushMask(data);
   }
 
+  // ---- Snap to grid ----
+
+  /**
+   * Snap an image-space point to the nearest grid position based on token radius.
+   * Odd-sized creatures (1×1, 3×3 …) snap to cell center.
+   * Even-sized creatures (2×2, 4×4 …) snap to the nearest grid corner/cross.
+   */
+  private snapPoint(img: Point, radius: number): Point {
+    if (!this.snapToGrid || !this.store) return img;
+    const { cellSize, originX, originY } = this.store.state.fog;
+    if (cellSize <= 0) return img;
+
+    // Determine creature size in cells (diameter / cellSize, rounded).
+    const sizeInCells = Math.max(1, Math.round((radius * 2) / cellSize));
+
+    if (sizeInCells % 2 === 0) {
+      // Even (2×2, 4×4 …): center sits on a grid corner.
+      return {
+        x: Math.round((img.x - originX) / cellSize) * cellSize + originX,
+        y: Math.round((img.y - originY) / cellSize) * cellSize + originY,
+      };
+    } else {
+      // Odd (1×1, 3×3 …): center sits in the middle of a cell.
+      return {
+        x: (Math.floor((img.x - originX) / cellSize) + 0.5) * cellSize + originX,
+        y: (Math.floor((img.y - originY) / cellSize) + 0.5) * cellSize + originY,
+      };
+    }
+  }
+
   // ---- Tokens ----
 
   private createToken(img: Point): void {
+    const defaultRadius = Math.max(12, this.store!.config.grid / 2);
     const token: Token = {
       id: randomId("tok"),
       x: img.x,
       y: img.y,
-      radius: Math.max(12, this.store!.config.grid / 2),
+      radius: defaultRadius,
       label: "",
       color: this.plugin.settings.defaultTokenColor,
       visible: true,
@@ -482,6 +534,10 @@ export class DmMapView extends BaseMapView {
         token.color = result.color;
         token.radius = result.radius;
         token.creature = result.creature;
+        // Re-snap with the final radius chosen in the modal.
+        const snapped = this.snapPoint(img, result.radius);
+        token.x = snapped.x;
+        token.y = snapped.y;
         this.store?.addToken(token);
       }
     ).open();
