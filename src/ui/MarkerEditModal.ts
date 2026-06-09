@@ -88,8 +88,6 @@ export class MarkerEditModal extends Modal {
         b.setButtonText("Delete");
         if (typeof b.setDestructive === "function") {
           b.setDestructive();
-        } else if (typeof b.setWarning === "function") {
-          b.setWarning();
         } else {
           b.setClass("mod-warning");
         }
