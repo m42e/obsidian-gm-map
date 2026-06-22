@@ -229,8 +229,10 @@ Markers are **DM-only** diamond-shaped pins. They are never shown in the Player 
 | `y` | number | **yes** | Position in image pixels (vertical). |
 | `label` | string | no | Short label drawn below the marker. |
 | `color` | string | no | CSS color for the diamond shape. Defaults to the plugin setting. |
-| `note` | string | no | Longer note text shown in the DM side panel when the marker is clicked. |
+| `note` | string | no | Longer note text shown in the DM side panel when the marker is clicked. May also be a `[[wikilink]]`. |
 | `linkedNote` | string | no | Vault-relative path to a note opened in the side panel on click. |
+
+Both `note` (as a `[[wikilink]]`) and `linkedNote` can target a whole note, a single heading section (`#Heading`), or a single paragraph / block (`#^block-id`). Only the referenced section is shown in the side panel.
 
 **Example — dungeon key:**
 
@@ -261,7 +263,7 @@ markers:
 ```
 ````
 
-> **Note:** `linkedNote` opens the referenced note in the DM side panel. The player view is never affected.
+> **Note:** `linkedNote` opens the referenced note in the DM side panel. Append `#Heading` to show just that section or `#^block-id` to show a single paragraph. The player view is never affected.
 
 ---
 

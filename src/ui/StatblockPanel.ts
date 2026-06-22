@@ -77,80 +77,98 @@ export class StatblockPanel {
     this.titleEl.setText(marker.label || "Marker");
     this.bodyEl.empty();
 
-    // Prefer linkedNote (file path), fall back to note (may be a wikilink string).
-    const rawText = marker.linkedNote
-      ? await this.readFileText(marker.linkedNote)
-      : (marker.note ?? null);
-
-    if (rawText !== null) {
-      const sourcePath = marker.linkedNote ?? "";
-      const resolved = await this.resolveWikilink(rawText, sourcePath);
+    // An explicit linked note always points at vault content: a path or
+    // wikilink, optionally narrowed to a #heading or a #^block (paragraph).
+    if (marker.linkedNote) {
+      const resolved = await this.resolveLink(marker.linkedNote);
       if (resolved) {
-        const target = this.bodyEl.createDiv({ cls: "gm-map-marker-note" });
-        const component = new Component();
-        this.owner.addChild(component);
-        this.rendered = component;
-        await MarkdownRenderer.render(
-          this.app,
-          resolved.content,
-          target,
-          resolved.path,
-          component
-        );
-      } else if (marker.linkedNote) {
+        await this.renderMarkdown(resolved.content, resolved.path);
+      } else {
         this.bodyEl.createDiv({
           cls: "gm-map-statblock-empty",
           text: `Note "${marker.linkedNote}" not found in vault.`,
         });
-      } else {
-        // note is plain text — render as markdown so formatting still works.
-        const target = this.bodyEl.createDiv({ cls: "gm-map-marker-note" });
-        const component = new Component();
-        this.owner.addChild(component);
-        this.rendered = component;
-        await MarkdownRenderer.render(this.app, rawText, target, "", component);
       }
-    } else {
-      this.bodyEl.createDiv({
-        cls: "gm-map-statblock-empty",
-        text: "No linked note. Right-click the marker to add one.",
-      });
+      return;
     }
+
+    // A free-form note may itself be a wikilink (resolved to its target, down
+    // to a heading or paragraph) or plain markdown text rendered as-is.
+    if (marker.note) {
+      const resolved = await this.resolveLink(marker.note, { wikilinkOnly: true });
+      await this.renderMarkdown(
+        resolved?.content ?? marker.note,
+        resolved?.path ?? ""
+      );
+      return;
+    }
+
+    this.bodyEl.createDiv({
+      cls: "gm-map-statblock-empty",
+      text: "No linked note. Right-click the marker to add one.",
+    });
   }
 
-  /** Read a vault file by path; returns its text or null if not found. */
-  private async readFileText(filePath: string): Promise<string | null> {
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (file instanceof TFile) return (await this.app.vault.read(file)).trim();
-    return null;
+  /** Render markdown into the panel body, tracked for later cleanup. */
+  private async renderMarkdown(content: string, sourcePath: string): Promise<void> {
+    const target = this.bodyEl.createDiv({ cls: "gm-map-marker-note" });
+    const component = new Component();
+    this.owner.addChild(component);
+    this.rendered = component;
+    await MarkdownRenderer.render(this.app, content, target, sourcePath, component);
   }
 
   /**
-   * If `raw` is (or is the content of) a single wikilink, resolve it and
-   * return the target content (optionally narrowed to a heading section).
-   * Returns null if `raw` is not a wikilink or the target doesn't exist.
+   * Resolve a link to vault content. The spec may be a `[[wikilink]]` or a bare
+   * vault path, each optionally narrowed with a `#heading` or a `#^block`
+   * (paragraph) reference. Returns the (optionally narrowed) content and its
+   * path, or null when it doesn't resolve to a file.
    *
-   * Handles: `[[path]]`, `[[path#heading]]`, `[[path|alias]]`,
-   *          `[[path#heading|alias]]`
+   * With `wikilinkOnly`, bare paths are rejected so plain note text is never
+   * accidentally treated as a link.
+   *
+   * Handles: `[[path]]`, `[[path#heading]]`, `[[path#^block]]`, `[[path|alias]]`,
+   *          `[[path#heading|alias]]`, `path/Note.md`, `path/Note.md#^block`.
    */
-  private async resolveWikilink(
-    raw: string,
-    sourcePath: string
+  private async resolveLink(
+    spec: string,
+    opts: { wikilinkOnly?: boolean } = {}
   ): Promise<{ content: string; path: string } | null> {
-    const m = raw.trim().match(/^\[\[([^\]#|]+)(?:#([^\]|]+))?(?:\|[^\]]+)?\]\]$/);
-    if (!m) return null;
+    const trimmed = spec.trim();
 
-    const linkPath = m[1].trim();
-    const heading = m[2]?.trim();
-    const target = this.app.metadataCache.getFirstLinkpathDest(linkPath, sourcePath);
-    if (!(target instanceof TFile)) return null;
-
-    const targetContent = await this.app.vault.read(target);
-    if (heading) {
-      const section = extractSection(targetContent, heading);
-      return { content: section ?? targetContent, path: target.path };
+    let inner: string;
+    const wiki = trimmed.match(/^\[\[([^\]]+)\]\]$/);
+    if (wiki) {
+      inner = wiki[1].split("|")[0]; // drop any |alias
+    } else if (opts.wikilinkOnly || trimmed.includes("\n")) {
+      return null; // plain text, not a link
+    } else {
+      inner = trimmed;
     }
-    return { content: targetContent, path: target.path };
+
+    const hashIdx = inner.indexOf("#");
+    const linkPath = (hashIdx >= 0 ? inner.slice(0, hashIdx) : inner).trim();
+    const fragment = hashIdx >= 0 ? inner.slice(hashIdx + 1).trim() : "";
+    if (!linkPath) return null;
+
+    const target = this.resolveFile(linkPath);
+    if (!target) return null;
+
+    const content = await this.app.vault.read(target);
+    if (!fragment) return { content: content.trim(), path: target.path };
+
+    const section = fragment.startsWith("^")
+      ? extractBlock(content, fragment.slice(1))
+      : extractSection(content, fragment);
+    return { content: (section ?? content).trim(), path: target.path };
+  }
+
+  /** Locate a vault file by exact path or by Obsidian link resolution. */
+  private resolveFile(linkPath: string): TFile | null {
+    const direct = this.app.vault.getAbstractFileByPath(linkPath);
+    if (direct instanceof TFile) return direct;
+    const dest = this.app.metadataCache.getFirstLinkpathDest(linkPath, "");
+    return dest instanceof TFile ? dest : null;
   }
 
   private clearRendered(): void {
@@ -195,4 +213,58 @@ function extractSection(content: string, heading: string): string | null {
     result.push(lines[i]);
   }
   return result.join("\n").trim();
+}
+
+/**
+ * Extracts a single block (paragraph, list item, table, …) identified by an
+ * Obsidian block reference `^blockId`. The id marker may sit at the end of a
+ * block's last line or on its own line directly after the block. Returns the
+ * block text with the marker stripped, or null when the id isn't found.
+ */
+function extractBlock(content: string, blockId: string): string | null {
+  const id = blockId.trim();
+  if (!id) return null;
+
+  const lines = content.split("\n");
+  const marker = new RegExp(`(?:^|\\s)\\^${escapeRegExp(id)}\\s*$`);
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!marker.test(lines[i])) continue;
+
+    // Remove the trailing `^id` marker from the matched line.
+    const stripped = lines[i].replace(/\s*\^[\w-]+\s*$/, "");
+
+    // Marker on its own line → the block is the preceding non-blank lines.
+    if (stripped.trim() === "") {
+      const block: string[] = [];
+      for (let j = i - 1; j >= 0 && lines[j].trim() !== ""; j--) {
+        block.unshift(lines[j]);
+      }
+      return block.join("\n").trim() || null;
+    }
+
+    // List item → just that item.
+    if (/^\s*(?:[-*+]|\d+[.)])\s/.test(stripped)) return stripped.trim();
+
+    // Paragraph → walk back over its (possibly wrapped) lines.
+    const block = [stripped];
+    for (let j = i - 1; j >= 0; j--) {
+      const prev = lines[j];
+      if (
+        prev.trim() === "" ||
+        /^#{1,6}\s/.test(prev) ||
+        /^\s*(?:[-*+]|\d+[.)])\s/.test(prev)
+      ) {
+        break;
+      }
+      block.unshift(prev);
+    }
+    return block.join("\n").trim() || null;
+  }
+  return null;
+}
+
+/** Escape a string for safe literal use inside a RegExp. */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
