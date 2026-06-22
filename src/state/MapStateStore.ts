@@ -3,13 +3,15 @@ import {
   MapConfig,
   MapState,
   Marker,
+  Ping,
+  PING_DURATION_MS,
   STATE_VERSION,
   Token,
 } from "../types";
 import { sigFrom } from "../codeblock/mapBlock";
 import { StatePersistence } from "./persistence";
 
-export type StoreEvent = "fog" | "tokens" | "markers" | "grid" | "pan" | "all";
+export type StoreEvent = "fog" | "tokens" | "markers" | "grid" | "pan" | "ping" | "all";
 type Listener = (event: StoreEvent) => void;
 
 /** Geometry for a grid with a given cell size and (x, y) offset. */
@@ -68,6 +70,8 @@ function createEmptyFog(config: MapConfig): FogData {
  */
 export class MapStateStore {
   state: MapState;
+  /** Transient attention pings dropped by players. Never persisted to disk. */
+  pings: Ping[] = [];
   private listeners = new Set<Listener>();
   private saveTimer: number | null = null;
   private readonly saveDelay = 600;
@@ -136,6 +140,11 @@ export class MapStateStore {
   private emit(event: StoreEvent): void {
     for (const l of this.listeners) l(event);
     this.scheduleSave();
+  }
+
+  /** Notify listeners without scheduling a disk save (for ephemeral state). */
+  private emitTransient(event: StoreEvent): void {
+    for (const l of this.listeners) l(event);
   }
 
   private scheduleSave(): void {
@@ -239,6 +248,21 @@ export class MapStateStore {
     this.state.playerPan.x = x;
     this.state.playerPan.y = y;
     this.emit("pan");
+  }
+
+  // ---- Attention pings (transient) ----
+
+  /**
+   * Record a transient attention ping at an image-space point. Pings are not
+   * persisted; they broadcast to every view subscribed to this store (so a
+   * player tap shows up live on the DM map) and self-expire.
+   */
+  addPing(ping: Ping): void {
+    const now = Date.now();
+    // Drop expired pings so the array can't grow without bound.
+    this.pings = this.pings.filter((p) => now - p.createdAt < PING_DURATION_MS);
+    this.pings.push(ping);
+    this.emitTransient("ping");
   }
 
   // ---- Token mutations ----

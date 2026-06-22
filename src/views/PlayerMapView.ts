@@ -49,6 +49,25 @@ export class PlayerMapView extends BaseMapView {
 
   protected onMapReady(): void {
     this.applyPhysicalScale();
+    // A tap/click anywhere on the player map drops an attention ping that the
+    // DM (and other players) see live. The view is otherwise read-only.
+    this.registerDomEvent(this.canvas, "pointerdown", (e: PointerEvent) =>
+      this.onPointerDown(e)
+    );
+  }
+
+  private onPointerDown(e: PointerEvent): void {
+    if (!this.store || !this.renderer) return;
+    // Mouse: left button only. Touch/pen: any contact.
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
+    const img = this.imagePoint(e);
+    this.store.addPing({
+      x: img.x,
+      y: img.y,
+      color: this.plugin.settings.pingColor,
+      createdAt: Date.now(),
+    });
   }
 
   protected handleStoreEvent(event: StoreEvent): void {

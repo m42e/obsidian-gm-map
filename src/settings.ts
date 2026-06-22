@@ -84,6 +84,18 @@ export class GmMapSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Ping color")
+      .setDesc("Color of the attention pings players drop by tapping the player map.")
+      .addColorPicker((picker) =>
+        picker
+          .setValue(this.plugin.settings.pingColor)
+          .onChange(async (value) => {
+            this.plugin.settings.pingColor = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
       .setName("Default label size")
       .setDesc("Font size in pixels for token and marker labels.")
       .addText((text) =>

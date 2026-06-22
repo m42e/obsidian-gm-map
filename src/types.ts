@@ -71,6 +71,20 @@ export interface Marker {
 }
 
 /**
+ * A transient "attention ping" dropped by a player tapping the player map. It
+ * animates briefly on the DM (and player) view and is never persisted.
+ */
+export interface Ping {
+  /** Center position in image pixels. */
+  x: number;
+  y: number;
+  /** CSS color of the ping pulse. */
+  color: string;
+  /** Wall-clock creation time (Date.now()) driving the animation. */
+  createdAt: number;
+}
+
+/**
  * Fog of war data.
  * - `cols`/`rows` describe the grid resolution.
  * - `revealed` is a flat row-major boolean array of revealed grid cells.
@@ -131,6 +145,8 @@ export interface GmMapSettings {
   gridColor: string;
   /** Grid line width in pixels. */
   gridLineWidth: number;
+  /** Color of attention pings dropped by players. */
+  pingColor: string;
 }
 
 export const DEFAULT_SETTINGS: GmMapSettings = {
@@ -144,9 +160,13 @@ export const DEFAULT_SETTINGS: GmMapSettings = {
   snapToGrid: true,
   gridColor: "#000000",
   gridLineWidth: 1.5,
+  pingColor: "#ff5252",
 };
 
 export const STATE_VERSION = 1;
+
+/** How long a ping pulse animates before disappearing, in milliseconds. */
+export const PING_DURATION_MS = 3000;
 
 export const VIEW_TYPE_DM = "gm-map-dm-view";
 export const VIEW_TYPE_PLAYER = "gm-map-player-view";

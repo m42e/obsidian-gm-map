@@ -2,6 +2,7 @@ import { MapStateStore } from "../state/MapStateStore";
 import { FogLayer } from "../fog/FogLayer";
 import { TokenLayer } from "../tokens/TokenLayer";
 import { MarkerLayer } from "../markers/MarkerLayer";
+import { PingLayer } from "../pings/PingLayer";
 import { Viewport } from "./Viewport";
 
 export type RenderMode = "dm" | "player";
@@ -15,6 +16,7 @@ export class MapRenderer {
   readonly fog: FogLayer;
   private readonly tokens = new TokenLayer();
   private readonly markers = new MarkerLayer();
+  private readonly pings = new PingLayer();
   private readonly ctx: CanvasRenderingContext2D;
   private rafHandle: number | null = null;
 
@@ -124,6 +126,11 @@ export class MapRenderer {
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.restore();
     }
+
+    // Attention pings (shown on both views, on top of everything). While any
+    // ping is still animating, keep rendering to drive the animation.
+    const pingsActive = this.pings.render(ctx, viewport, this.store.pings, Date.now());
+    if (pingsActive) this.requestRender();
   }
 
   hitTestToken(imgPoint: { x: number; y: number }) {
