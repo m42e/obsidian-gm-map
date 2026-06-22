@@ -84,6 +84,36 @@ export class GmMapSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Default spell color")
+      .setDesc("Default color for new spell area templates.")
+      .addColorPicker((picker) =>
+        picker
+          .setValue(this.plugin.settings.defaultSpellColor)
+          .onChange(async (value) => {
+            this.plugin.settings.defaultSpellColor = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Feet per grid cell")
+      .setDesc(
+        "How many feet one grid square represents. Used to scale spell areas (D&D standard is 5)."
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder("5")
+          .setValue(String(this.plugin.settings.feetPerCell))
+          .onChange(async (value) => {
+            const n = Number(value);
+            if (!Number.isNaN(n) && n > 0) {
+              this.plugin.settings.feetPerCell = n;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    new Setting(containerEl)
       .setName("Ping color")
       .setDesc("Color of the attention pings players drop by tapping the player map.")
       .addColorPicker((picker) =>

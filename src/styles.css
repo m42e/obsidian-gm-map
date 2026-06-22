@@ -118,6 +118,7 @@
 .gm-map-canvas-wrap[data-tool="fog-brush"] .gm-map-canvas { cursor: crosshair; }
 .gm-map-canvas-wrap[data-tool="token"] .gm-map-canvas { cursor: copy; }
 .gm-map-canvas-wrap[data-tool="marker"] .gm-map-canvas { cursor: copy; }
+.gm-map-canvas-wrap[data-tool="spell"] .gm-map-canvas { cursor: crosshair; }
 
 /* ============ DM toolbar ============ */
 .gm-map-toolbar {

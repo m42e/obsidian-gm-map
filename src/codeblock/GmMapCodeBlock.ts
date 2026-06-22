@@ -1,7 +1,7 @@
 import { MarkdownPostProcessorContext, parseYaml, setIcon } from "obsidian";
 import type GmMapPlugin from "../../main";
 import { MapConfig } from "../types";
-import { RawMapBlock, normalizeMarkers, normalizeTokens } from "./mapBlock";
+import { RawMapBlock, normalizeMarkers, normalizeSpells, normalizeTokens } from "./mapBlock";
 
 /**
  * Renders a ```gm-map code block as a launcher card with buttons to open the
@@ -48,6 +48,7 @@ export class GmMapCodeBlock {
       grid,
       tokenColor: this.plugin.settings.defaultTokenColor,
       markerColor: this.plugin.settings.defaultMarkerColor,
+      spellColor: this.plugin.settings.defaultSpellColor,
     };
 
     const config: MapConfig = {
@@ -67,6 +68,7 @@ export class GmMapCodeBlock {
       gridOverlay: raw.gridOverlay === true ? true : undefined,
       tokens: normalizeTokens(raw.tokens, defaults),
       markers: normalizeMarkers(raw.markers, defaults),
+      spells: normalizeSpells(raw.spells, defaults),
       notePath: ctx.sourcePath,
     };
 
@@ -87,10 +89,13 @@ export class GmMapCodeBlock {
     const counts: string[] = [];
     const tokenCount = config.tokens?.length ?? 0;
     const markerCount = config.markers?.length ?? 0;
+    const spellCount = config.spells?.length ?? 0;
     if (tokenCount)
       counts.push(`${tokenCount} token${tokenCount === 1 ? "" : "s"}`);
     if (markerCount)
       counts.push(`${markerCount} marker${markerCount === 1 ? "" : "s"}`);
+    if (spellCount)
+      counts.push(`${spellCount} spell${spellCount === 1 ? "" : "s"}`);
     if (counts.length) {
       header.createDiv({ cls: "gm-map-card-count", text: counts.join(" \u00b7 ") });
     }

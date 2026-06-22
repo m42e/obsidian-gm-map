@@ -1,5 +1,5 @@
 import { App, TFile, parseYaml, stringifyYaml } from "obsidian";
-import { MapConfig, MapState, Marker, Token } from "../types";
+import { MapConfig, MapState, Marker, Spell, SpellShape, Token } from "../types";
 
 /** Raw shape of a ```gm-map code block before normalization. */
 export interface RawMapBlock {
@@ -14,12 +14,14 @@ export interface RawMapBlock {
   gridOverlay?: boolean;
   tokens?: unknown;
   markers?: unknown;
+  spells?: unknown;
 }
 
 interface NormalizeDefaults {
   grid: number;
   tokenColor: string;
   markerColor: string;
+  spellColor: string;
 }
 
 function asNumber(v: unknown): number | null {
@@ -89,11 +91,52 @@ export function normalizeMarkers(
   return markers;
 }
 
+const SPELL_SHAPES: SpellShape[] = ["circle", "cone", "line", "cube"];
+
+/** Normalize the raw `spells` array into well-formed Spell objects. */
+export function normalizeSpells(
+  raw: unknown,
+  defaults: NormalizeDefaults
+): Spell[] {
+  if (!Array.isArray(raw)) return [];
+  const spells: Spell[] = [];
+  raw.forEach((entry, i) => {
+    if (!entry || typeof entry !== "object") return;
+    const r = entry as Record<string, unknown>;
+    const x = asNumber(r.x);
+    const y = asNumber(r.y);
+    if (x === null || y === null) return;
+    const shape =
+      typeof r.shape === "string" && SPELL_SHAPES.includes(r.shape as SpellShape)
+        ? (r.shape as SpellShape)
+        : "circle";
+    const size = asNumber(r.size);
+    const width = asNumber(r.width);
+    const rotation = asNumber(r.rotation);
+    spells.push({
+      id:
+        typeof r.id === "string" && r.id.trim()
+          ? r.id.trim()
+          : `md-spell-${i}`,
+      shape,
+      x,
+      y,
+      size: size && size > 0 ? size : 20,
+      width: shape === "line" ? (width && width > 0 ? width : 5) : undefined,
+      angle: rotation ? (rotation * Math.PI) / 180 : 0,
+      label: typeof r.label === "string" ? r.label : "",
+      color: typeof r.color === "string" ? r.color : defaults.spellColor,
+      visible: r.visible === true,
+    });
+  });
+  return spells;
+}
+
 /**
  * Stable signature of the declarative tokens/markers. Used to detect when the
  * code block was edited so the markdown can re-seed the working state.
  */
-export function sigFrom(tokens: Token[], markers: Marker[]): string {
+export function sigFrom(tokens: Token[], markers: Marker[], spells: Spell[] = []): string {
   return JSON.stringify({
     t: tokens.map((t) => [
       t.id,
@@ -112,6 +155,18 @@ export function sigFrom(tokens: Token[], markers: Marker[]): string {
       m.label,
       m.color,
       m.note ?? null,
+    ]),
+    s: spells.map((s) => [
+      s.id,
+      s.shape,
+      Math.round(s.x),
+      Math.round(s.y),
+      Math.round(s.size),
+      Math.round(s.width ?? 0),
+      Math.round((s.angle * 180) / Math.PI),
+      s.color,
+      s.label,
+      s.visible,
     ]),
   });
 }
@@ -155,6 +210,23 @@ export function buildMapYaml(config: MapConfig, state: MapState): string {
     };
     if (m.label) o.label = m.label;
     if (m.note) o.note = m.note;
+    return o;
+  });
+
+  obj.spells = state.spells.map((s) => {
+    const o: Record<string, unknown> = {
+      id: s.id,
+      shape: s.shape,
+      x: Math.round(s.x),
+      y: Math.round(s.y),
+      size: Math.round(s.size),
+      color: s.color,
+    };
+    if (s.shape === "line" && s.width) o.width = Math.round(s.width);
+    const deg = Math.round((s.angle * 180) / Math.PI);
+    if (s.shape !== "circle" && deg !== 0) o.rotation = deg;
+    if (s.label) o.label = s.label;
+    if (s.visible) o.visible = true;
     return o;
   });
 

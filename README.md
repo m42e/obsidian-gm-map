@@ -16,11 +16,13 @@ An [Obsidian](https://obsidian.md) plugin for tabletop RPG game masters. Display
   - [Grid Options](#grid-options)
   - [Tokens](#tokens)
   - [Markers](#markers)
+  - [Spell Areas](#spell-areas)
 - [DM View](#dm-view)
   - [Toolbar](#toolbar)
   - [Fog of War](#fog-of-war)
   - [Working with Tokens](#working-with-tokens)
   - [Working with Markers](#working-with-markers)
+  - [Working with Spell Areas](#working-with-spell-areas)
   - [Player Pan Control](#player-pan-control)
   - [Grid Alignment](#grid-alignment)
   - [Saving State to the Note](#saving-state-to-the-note)
@@ -43,6 +45,7 @@ An [Obsidian](https://obsidian.md) plugin for tabletop RPG game masters. Display
 - **Fog of war** — paint and erase fog to reveal the map progressively; two independent modes: grid cells and freeform brush
 - **DM-only markers** — place waypoints and notes visible only to the DM, each with an optional longer note and a linked vault note
 - **Creature tokens** — drag tokens onto the map and optionally link them to entries in your bestiary
+- **Spell area templates** — place D&D area-of-effect shapes (sphere, cone, line, cube) sized in feet; keep them DM-only or reveal them to players
 - **Statblock integration** — works with the [Fantasy Statblocks](https://github.com/javalent/statblocks) plugin to display creature statblocks directly from a token
 - **Grid overlay** — optional square grid that can be toggled for both DM and Player views simultaneously
 - **Player pan control** — the DM can pan the player's view remotely without moving their own viewport
@@ -267,6 +270,74 @@ markers:
 
 ---
 
+### Spell Areas
+
+Spell areas are translucent **area-of-effect templates** for spells and other effects. They are authored in the DM view (or the code block) and are **DM-only by default** — set `visible: true` to also show a template on the player view.
+
+Sizes are given in **feet** and scale to the grid using the **Feet per grid cell** setting (D&D standard: one 5 ft. square per cell). The shapes follow the D&D 5e rules for how an area extends from its point of origin:
+
+| `shape` | D&D area | `size` means | `width` | Origin (`x`, `y`) | Aimed by `rotation`? |
+|---|---|---|---|---|---|
+| `circle` | Sphere / Cylinder (top-down) | **Radius** | — | Center | No (symmetric) |
+| `cone` | Cone | **Length** — the far end is exactly this wide | — | Apex (the point) | Yes |
+| `line` | Line | **Length** | Line **width** (default 5) | Center of the near end | Yes |
+| `cube` | Cube | **Side** length | — | Center of the near face | Yes |
+
+> A cone's width at any point equals its distance from the origin, so a 30 ft. cone is 30 ft. wide at its far edge. A cube's point of origin lies on one face, so the square extends `size` feet in the direction it is aimed.
+
+Each entry in the `spells` array supports these fields:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | string | no | Stable identifier. Auto-generated if omitted. |
+| `shape` | string | no | One of `circle`, `cone`, `line`, `cube`. Defaults to `circle`. |
+| `x` | number | **yes** | Origin position in image pixels (horizontal). |
+| `y` | number | **yes** | Origin position in image pixels (vertical). |
+| `size` | number | no | Primary dimension in **feet** (radius / length / side). Defaults to `20`. |
+| `width` | number | no | Line width in feet (only used by `line`; defaults to `5`). |
+| `rotation` | number | no | Facing direction in **degrees** for cone / line / cube (`0` = pointing right). Ignored for circles. |
+| `label` | string | no | Text drawn at the origin. |
+| `color` | string | no | CSS color. The fill is translucent; the outline is solid. Defaults to the plugin setting. |
+| `visible` | boolean | no | When `true`, players also see the template. Defaults to `false` (DM-only). |
+
+**Example — a fireball and a dragon's breath cone:**
+
+````markdown
+```gm-map
+id: dragon-fight
+image: "Maps/cavern.png"
+grid: 70
+spells:
+  - id: fireball
+    shape: circle
+    x: 700
+    y: 500
+    size: 20            # 20 ft. radius
+    color: "#e67e22"
+    label: "Fireball"
+    visible: true
+  - id: breath
+    shape: cone
+    x: 300
+    y: 300
+    size: 60            # 60 ft. cone
+    rotation: 35
+    color: "#c0392b"
+    label: "Fire Breath"
+  - id: bolt
+    shape: line
+    x: 200
+    y: 700
+    size: 100           # 100 ft. long
+    width: 5            # 5 ft. wide
+    rotation: 0
+    color: "#9b59b6"
+    label: "Lightning Bolt"
+```
+````
+
+---
+
 ## DM View
 
 Open the DM view via the **Open DM view** button in the rendered code block, or through the command palette (**GM Map: Open DM view**). The DM view shows the full map with all tokens, all markers, and a semi-transparent fog layer so you can work underneath the fog.
@@ -281,6 +352,7 @@ Open the DM view via the **Open DM view** button in the rendered code block, or 
 | Fog: freeform brush | brush | `fog-brush` | Paint fog with a circular brush. Use the **Brush size** slider to adjust the brush diameter. Use the reveal/hide toggle to switch modes. |
 | Add token | user | `token` | Click anywhere on the map to open the token creation dialog. |
 | Add marker | map-pin | `marker` | Click anywhere on the map to open the marker creation dialog. |
+| Add spell area | sparkles | `spell` | Click an origin point to open the spell-area dialog (shape, size in feet, color, visibility). |
 
 Additional toolbar controls:
 
@@ -370,6 +442,35 @@ When editing a token, type a creature name in the **Creature** field. If [Fantas
 
 ---
 
+### Working with Spell Areas
+
+**Adding a spell area interactively:**
+
+1. Select the **Add spell area** (`sparkles`) tool.
+2. Click the origin point on the map (where the spell is centered or cast from).
+3. In the dialog, pick a **preset** (e.g. *Fireball — 20 ft sphere*) or choose a **shape** and enter the **size** in feet. For a line, also set its **width**.
+4. Optionally set a **label**, **color**, and whether it is **visible to players**.
+5. Click **Save**.
+
+**Aiming and moving:**
+
+1. Switch to the **Pan / select** tool.
+2. Click the template to select it (a white outline appears).
+3. Drag the **body** to move its origin. With **Snap to grid** on, the origin snaps to the nearest grid intersection.
+4. For cones, lines, and cubes, drag the **round handle** at the far end to rotate the template toward a target.
+
+**Editing or deleting:**
+
+- **Right-click** a template to open its dialog, where you can change the shape, size, color, visibility, or **Delete** it.
+
+**Showing players:**
+
+Toggle **Visible to players** in the dialog (or set `visible: true` in the code block) to reveal a template on the player view — useful for showing exactly who is caught in a blast. Leave it off to plan privately on the DM view.
+
+> Spell templates are saved with **Save to note** alongside tokens and markers, and persist in the sidecar file between sessions.
+
+---
+
 ### Player Pan Control
 
 The **Player pan** tool (`navigation` icon) lets you scroll what the players see without moving your own DM viewport.
@@ -396,13 +497,13 @@ The grid cell size (`grid`) must also match the pixel size of one map square in 
 
 ### Saving State to the Note
 
-Click **Save to note** in the DM toolbar to write the current token and marker positions back into the `gm-map` code block in your note. This is useful to:
+Click **Save to note** in the DM toolbar to write the current token, marker, and spell-area positions back into the `gm-map` code block in your note. This is useful to:
 
 - Version-control a snapshot of the encounter in your session notes.
 - Pre-populate a map with tokens that should appear at the start of the next session.
 - Share the note with someone else with all positions intact.
 
-> **Important:** Fog state is **not** saved into the note — it lives in a separate sidecar file. Only token and marker data is embedded in the code block.
+> **Important:** Fog state is **not** saved into the note — it lives in a separate sidecar file. Only token, marker, and spell-area data is embedded in the code block.
 
 ---
 
@@ -414,6 +515,7 @@ The Player view:
 
 - Shows **only revealed areas** (fully opaque fog everywhere else).
 - Shows creature tokens.
+- Shows spell area templates **only** when the DM marked them visible to players.
 - **Never** shows DM markers or the DM toolbar.
 - Reflects all DM changes in real time: fog reveals, token movements, and grid overlay toggles.
 - Can be panned remotely by the DM using the **Player pan** tool.
@@ -484,6 +586,8 @@ Open **Settings → GM Map** to configure global defaults. Per-map overrides in 
 | **Default brush size** | `120` | Starting diameter of the freeform fog brush in image pixels. |
 | **Default token color** | `#c0392b` (red) | Color applied to new tokens when no `color` is specified. |
 | **Default marker color** | `#f1c40f` (yellow) | Color applied to new markers when no `color` is specified. |
+| **Default spell color** | `#e67e22` (orange) | Color applied to new spell templates when no `color` is specified. |
+| **Feet per grid cell** | `5` | How many feet one grid square represents. Spell areas are sized in feet and scaled to the grid using this value (D&D standard is 5 ft.). |
 | **Snap tokens to grid** | enabled | Default state of the snap-to-grid toggle in the DM toolbar. When on, newly placed and dragged tokens snap to grid cell centers (odd-sized creatures) or grid corners (even-sized creatures). |
 | **Player screen DPI** | `96` | Physical pixels-per-inch of the player's monitor. Used to scale the map so that one grid cell equals one physical inch on screen (useful for virtual tabletop-style play on a TV or large monitor). Common values: `96` (standard HD), `109` (24″ 1080p), `163` (27″ 4K). |
 
@@ -495,8 +599,8 @@ GM Map separates two kinds of state:
 
 | Kind | Where it lives | What it contains |
 |---|---|---|
-| **Dynamic state** | `.obsidian/plugins/gm-player-map/maps/<id>.json` | Fog mask, live token positions, live marker positions, grid overlay flag, player pan position |
-| **Declarative state** | The `gm-map` code block in your note | Tokens and markers as authored by you; overrides dynamic state when the code block changes |
+| **Dynamic state** | `.obsidian/plugins/gm-player-map/maps/<id>.json` | Fog mask, live token positions, live marker positions, spell templates, grid overlay flag, player pan position |
+| **Declarative state** | The `gm-map` code block in your note | Tokens, markers, and spell templates as authored by you; overrides dynamic state when the code block changes |
 
 **How seeding works:**
 

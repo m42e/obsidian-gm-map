@@ -61,6 +61,7 @@ export abstract class BaseMapView extends ItemView {
           ...this.config,
           tokens: this.store.state.tokens,
           markers: this.store.state.markers,
+          spells: this.store.state.spells,
         },
       };
     }
@@ -127,6 +128,7 @@ export abstract class BaseMapView extends ItemView {
     this.renderer.labelSize = this.plugin.settings.defaultLabelSize;
     this.renderer.gridColor = this.plugin.settings.gridColor;
     this.renderer.gridLineWidth = this.plugin.settings.gridLineWidth;
+    this.renderer.feetPerCell = this.plugin.settings.feetPerCell;
     await this.renderer.init();
     this.loadedBrush = this.store.state.fog.brush;
 
@@ -142,7 +144,13 @@ export abstract class BaseMapView extends ItemView {
         this.renderer?.fog.markDirty();
       }
       this.handleStoreEvent(event);
-      this.renderer?.requestRender();
+      if (event === "ping") {
+        // Pings animate via a timer so they still show on the DM map while the
+        // player's pop-out window has focus; other events use the rAF path.
+        this.renderer?.pingAdded();
+      } else {
+        this.renderer?.requestRender();
+      }
     });
 
     this.attachCommonInteractions();

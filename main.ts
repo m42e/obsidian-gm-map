@@ -63,7 +63,9 @@ export default class GmMapPlugin extends Plugin {
     }
     const ok = await writeMapToNote(this.app, config, store.state);
     if (ok) {
-      store.setSourceSig(sigFrom(store.state.tokens, store.state.markers));
+      store.setSourceSig(
+        sigFrom(store.state.tokens, store.state.markers, store.state.spells)
+      );
       new Notice("GM Map: saved tokens & markers to the note.");
     } else {
       new Notice("GM Map: could not find the map block in the note.");

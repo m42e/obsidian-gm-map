@@ -5,13 +5,22 @@ import {
   Marker,
   Ping,
   PING_DURATION_MS,
+  Spell,
   STATE_VERSION,
   Token,
 } from "../types";
 import { sigFrom } from "../codeblock/mapBlock";
 import { StatePersistence } from "./persistence";
 
-export type StoreEvent = "fog" | "tokens" | "markers" | "grid" | "pan" | "ping" | "all";
+export type StoreEvent =
+  | "fog"
+  | "tokens"
+  | "markers"
+  | "spells"
+  | "grid"
+  | "pan"
+  | "ping"
+  | "all";
 type Listener = (event: StoreEvent) => void;
 
 /** Geometry for a grid with a given cell size and (x, y) offset. */
@@ -89,9 +98,10 @@ export class MapStateStore {
         fog: createEmptyFog(config),
         tokens: (config.tokens ?? []).map((t) => ({ ...t })),
         markers: (config.markers ?? []).map((m) => ({ ...m })),
+        spells: (config.spells ?? []).map((s) => ({ ...s })),
         gridOverlay: config.gridOverlay ?? false,
         showTokens: true,
-        sourceSig: sigFrom(config.tokens ?? [], config.markers ?? []),
+        sourceSig: sigFrom(config.tokens ?? [], config.markers ?? [], config.spells ?? []),
         version: STATE_VERSION,
       };
     }
@@ -128,6 +138,7 @@ export class MapStateStore {
     };
     state.tokens = Array.isArray(state.tokens) ? state.tokens : [];
     state.markers = Array.isArray(state.markers) ? state.markers : [];
+    state.spells = Array.isArray(state.spells) ? state.spells : [];
     state.gridOverlay = Boolean(state.gridOverlay);
     return state;
   }
@@ -305,6 +316,26 @@ export class MapStateStore {
     if (this.state.markers.length !== before) this.emit("markers");
   }
 
+  // ---- Spell template mutations ----
+
+  addSpell(spell: Spell): void {
+    this.state.spells.push(spell);
+    this.emit("spells");
+  }
+
+  updateSpell(id: string, patch: Partial<Spell>): void {
+    const s = this.state.spells.find((s) => s.id === id);
+    if (!s) return;
+    Object.assign(s, patch);
+    this.emit("spells");
+  }
+
+  removeSpell(id: string): void {
+    const before = this.state.spells.length;
+    this.state.spells = this.state.spells.filter((s) => s.id !== id);
+    if (this.state.spells.length !== before) this.emit("spells");
+  }
+
   /**
    * Record the markdown signature for the current tokens/markers (called after
    * saving to the note) so the saved state isn't treated as a markdown edit.
@@ -347,7 +378,7 @@ export class StoreRegistry {
     config: MapConfig,
     sidecar: MapState | null
   ): MapState | null {
-    const sig = sigFrom(config.tokens ?? [], config.markers ?? []);
+    const sig = sigFrom(config.tokens ?? [], config.markers ?? [], config.spells ?? []);
     if (sidecar && sidecar.sourceSig === sig) {
       return sidecar;
     }
@@ -361,6 +392,7 @@ export class StoreRegistry {
       fog: sidecar.fog,
       tokens: (config.tokens ?? []).map((t) => ({ ...t })),
       markers: (config.markers ?? []).map((m) => ({ ...m })),
+      spells: (config.spells ?? []).map((s) => ({ ...s })),
       gridOverlay: sidecar.gridOverlay,
       showTokens: sidecar.showTokens ?? true,
       sourceSig: sig,

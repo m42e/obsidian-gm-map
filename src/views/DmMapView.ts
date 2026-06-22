@@ -1,11 +1,12 @@
 import { WorkspaceLeaf, setIcon } from "obsidian";
 import { BaseMapView } from "./BaseMapView";
 import { RenderMode } from "../render/MapRenderer";
-import { DmTool, Marker, Token, VIEW_TYPE_DM, VIEW_TYPE_PLAYER } from "../types";
+import { DmTool, Marker, Spell, Token, VIEW_TYPE_DM, VIEW_TYPE_PLAYER } from "../types";
 import { Point } from "../render/Viewport";
 import { StatblockPanel } from "../ui/StatblockPanel";
 import { TokenEditModal } from "../ui/TokenEditModal";
 import { MarkerEditModal } from "../ui/MarkerEditModal";
+import { SpellEditModal } from "../ui/SpellEditModal";
 import { GridAlignPanel } from "../ui/GridAlignPanel";
 import { PlayerMapView } from "./PlayerMapView";
 import type GmMapPlugin from "../../main";
@@ -30,6 +31,8 @@ export class DmMapView extends BaseMapView {
   private dragging = false;
   private draggingTokenId: string | null = null;
   private draggingMarkerId: string | null = null;
+  private draggingSpellId: string | null = null;
+  private rotatingSpellId: string | null = null;
   private moved = false;
   private lastClient = { x: 0, y: 0 };
 
@@ -83,6 +86,7 @@ export class DmMapView extends BaseMapView {
     addTool("fog-brush", "brush", "Fog: freeform brush");
     addTool("token", "user", "Add token");
     addTool("marker", "map-pin", "Add DM marker");
+    addTool("spell", "sparkles", "Add spell area template");
 
     bar.createDiv({ cls: "gm-map-toolbar-sep" });
 
@@ -379,6 +383,24 @@ export class DmMapView extends BaseMapView {
 
     switch (this.tool) {
       case "pan": {
+        // The rotation handle of the selected spell takes priority over move.
+        if (this.renderer.selectedSpellId) {
+          const sel = this.store.state.spells.find(
+            (s) => s.id === this.renderer!.selectedSpellId
+          );
+          const handle = sel ? this.renderer.spellHandlePoint(sel) : null;
+          if (sel && handle) {
+            const hs = this.renderer.viewport.toScreen(handle);
+            const p = this.eventPoint(e);
+            const dx = p.x - hs.x;
+            const dy = p.y - hs.y;
+            const r = this.renderer.spellHandleHitRadius;
+            if (dx * dx + dy * dy <= r * r) {
+              this.rotatingSpellId = sel.id;
+              return;
+            }
+          }
+        }
         const token = this.renderer.hitTestToken(img);
         if (token) {
           this.draggingTokenId = token.id;
@@ -392,6 +414,18 @@ export class DmMapView extends BaseMapView {
           this.renderer.selectedMarkerId = marker.id;
           this.renderer.requestRender();
           return;
+        }
+        const spell = this.renderer.hitTestSpell(img);
+        if (spell) {
+          this.draggingSpellId = spell.id;
+          this.renderer.selectedSpellId = spell.id;
+          this.renderer.requestRender();
+          return;
+        }
+        // Empty space: drop the spell selection so its handle disappears.
+        if (this.renderer.selectedSpellId) {
+          this.renderer.selectedSpellId = null;
+          this.renderer.requestRender();
         }
         // else pan (handled in mousemove)
         break;
@@ -414,6 +448,10 @@ export class DmMapView extends BaseMapView {
         this.createMarker(img);
         this.dragging = false;
         break;
+      case "spell":
+        this.createSpell(img);
+        this.dragging = false;
+        break;
     }
   }
 
@@ -434,6 +472,20 @@ export class DmMapView extends BaseMapView {
     }
     if (this.draggingMarkerId) {
       this.store.updateMarker(this.draggingMarkerId, { x: img.x, y: img.y });
+      return;
+    }
+    if (this.rotatingSpellId) {
+      const s = this.store.state.spells.find((s) => s.id === this.rotatingSpellId);
+      if (s) {
+        this.store.updateSpell(this.rotatingSpellId, {
+          angle: Math.atan2(img.y - s.y, img.x - s.x),
+        });
+      }
+      return;
+    }
+    if (this.draggingSpellId) {
+      const snapped = this.snapSpellPoint(img);
+      this.store.updateSpell(this.draggingSpellId, { x: snapped.x, y: snapped.y });
       return;
     }
     switch (this.tool) {
@@ -494,6 +546,8 @@ export class DmMapView extends BaseMapView {
 
     this.draggingTokenId = null;
     this.draggingMarkerId = null;
+    this.draggingSpellId = null;
+    this.rotatingSpellId = null;
   }
 
   private onContextMenu(e: MouseEvent): void {
@@ -508,6 +562,11 @@ export class DmMapView extends BaseMapView {
     const marker = this.renderer.hitTestMarker(img);
     if (marker) {
       this.editMarker(marker);
+      return;
+    }
+    const spell = this.renderer.hitTestSpell(img);
+    if (spell) {
+      this.editSpell(spell);
     }
   }
 
@@ -658,6 +717,74 @@ export class DmMapView extends BaseMapView {
         this.store?.removeMarker(marker.id);
         if (this.renderer?.selectedMarkerId === marker.id) {
           this.renderer.selectedMarkerId = null;
+        }
+      }
+    ).open();
+  }
+
+  // ---- Spell area templates ----
+
+  /** Snap a spell's origin to the nearest grid intersection when snap is on. */
+  private snapSpellPoint(img: Point): Point {
+    if (!this.snapToGrid || !this.store) return img;
+    const { cellSize, originX, originY } = this.store.state.fog;
+    if (cellSize <= 0) return img;
+    return {
+      x: Math.round((img.x - originX) / cellSize) * cellSize + originX,
+      y: Math.round((img.y - originY) / cellSize) * cellSize + originY,
+    };
+  }
+
+  private createSpell(img: Point): void {
+    const snapped = this.snapSpellPoint(img);
+    const spell: Spell = {
+      id: randomId("spl"),
+      shape: "circle",
+      x: snapped.x,
+      y: snapped.y,
+      size: 20,
+      angle: 0,
+      label: "",
+      color: this.plugin.settings.defaultSpellColor,
+      visible: false,
+    };
+    new SpellEditModal(this.app, spell, (result) => {
+      if (!result) return;
+      spell.shape = result.shape;
+      spell.size = result.size;
+      spell.width = result.width;
+      spell.angle = result.angle;
+      spell.label = result.label;
+      spell.color = result.color;
+      spell.visible = result.visible;
+      this.store?.addSpell(spell);
+      if (this.renderer) {
+        this.renderer.selectedSpellId = spell.id;
+        this.renderer.requestRender();
+      }
+    }).open();
+  }
+
+  private editSpell(spell: Spell): void {
+    new SpellEditModal(
+      this.app,
+      spell,
+      (result) => {
+        if (!result) return;
+        this.store?.updateSpell(spell.id, {
+          shape: result.shape,
+          size: result.size,
+          width: result.width,
+          angle: result.angle,
+          label: result.label,
+          color: result.color,
+          visible: result.visible,
+        });
+      },
+      () => {
+        this.store?.removeSpell(spell.id);
+        if (this.renderer?.selectedSpellId === spell.id) {
+          this.renderer.selectedSpellId = null;
         }
       }
     ).open();

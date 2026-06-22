@@ -4,7 +4,17 @@
 export type FogTool = "reveal" | "hide";
 
 /** Active editing tool in the DM view. */
-export type DmTool = "pan" | "fog-brush" | "fog-grid" | "token" | "marker" | "player-pan";
+export type DmTool = "pan" | "fog-brush" | "fog-grid" | "token" | "marker" | "spell" | "player-pan";
+
+/**
+ * Top-down projection of a D&D 5e spell area of effect.
+ * - `circle`: a sphere or cylinder seen from above, defined by a radius.
+ * - `cone`: extends from its point of origin; its width at any point equals the
+ *   distance from the origin, so the far end is as wide as it is long.
+ * - `line`: a straight path of a given length and width.
+ * - `cube`: a square whose point of origin lies on one face.
+ */
+export type SpellShape = "circle" | "cone" | "line" | "cube";
 
 /**
  * Static configuration declared in a ```gm-map code block. Tokens, markers and
@@ -35,6 +45,8 @@ export interface MapConfig {
   tokens?: Token[];
   /** Markers declared in the code block (DM-only). */
   markers?: Marker[];
+  /** Spell templates declared in the code block. */
+  spells?: Spell[];
   /** Vault path of the note containing the code block (for "Save to note"). */
   notePath?: string;
 }
@@ -68,6 +80,42 @@ export interface Marker {
   note?: string;
   /** Vault-relative path of a note to display in the side panel when clicked. */
   linkedNote?: string;
+}
+
+/**
+ * A D&D spell area-of-effect template placed on the map. Authored in the DM
+ * view; players only see it when `visible` is set. Sizes are stored in feet and
+ * converted to image pixels via the grid scale (see `feetPerCell`).
+ */
+export interface Spell {
+  id: string;
+  /** Area shape; determines how `size`/`width`/`angle` are interpreted. */
+  shape: SpellShape;
+  /**
+   * Point of origin in image pixels. For a circle this is the center; for a
+   * cone it is the apex; for a line and a cube it is the center of the near
+   * face from which the area extends along `angle`.
+   */
+  x: number;
+  y: number;
+  /**
+   * Primary dimension in feet: radius (circle), length (cone/line) or side
+   * length (cube). A cone's far end is exactly this wide.
+   */
+  size: number;
+  /** Width in feet for a line (ignored by the other shapes). */
+  width?: number;
+  /**
+   * Facing direction in radians for cone/line/cube (0 = pointing right/east).
+   * Unused for circles, which are rotationally symmetric.
+   */
+  angle: number;
+  /** Display label drawn at the origin. */
+  label: string;
+  /** CSS color (translucent fill + solid outline). */
+  color: string;
+  /** Whether players also see this template (synced to the player view). */
+  visible: boolean;
 }
 
 /**
@@ -112,6 +160,8 @@ export interface MapState {
   fog: FogData;
   tokens: Token[];
   markers: Marker[];
+  /** Spell area-of-effect templates placed by the DM. */
+  spells: Spell[];
   /** Whether the grid overlay is shown (on both DM and player views). */
   gridOverlay: boolean;
   /** Whether tokens are visible on the map. */
@@ -135,6 +185,10 @@ export interface GmMapSettings {
   defaultBrushSize: number;
   defaultTokenColor: string;
   defaultMarkerColor: string;
+  /** Default color for new spell area templates. */
+  defaultSpellColor: string;
+  /** Number of feet represented by one grid cell (D&D standard is 5). */
+  feetPerCell: number;
   /** Physical DPI of the player's screen (used to display 1 grid cell = 1 inch). */
   playerScreenDpi: number;
   /** Font size in pixels for token and marker labels. */
@@ -155,6 +209,8 @@ export const DEFAULT_SETTINGS: GmMapSettings = {
   defaultBrushSize: 120,
   defaultTokenColor: "#c0392b",
   defaultMarkerColor: "#f1c40f",
+  defaultSpellColor: "#e67e22",
+  feetPerCell: 5,
   playerScreenDpi: 96,
   defaultLabelSize: 12,
   snapToGrid: true,

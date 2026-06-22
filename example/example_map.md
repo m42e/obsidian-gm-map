@@ -62,6 +62,23 @@ markers:
     y: 585
     color: "#f1c40f"
     label: Secret Door
+spells:
+  - id: spl_fireball
+    shape: circle
+    x: 1466
+    y: 920
+    size: 20
+    color: "#e67e22"
+    label: Fireball
+    visible: true
+  - id: spl_burning_hands
+    shape: cone
+    x: 1471
+    y: 757
+    size: 15
+    rotation: 90
+    color: "#c0392b"
+    label: Burning Hands
 ```
 
 Map is from www.fantasticmaps.com
