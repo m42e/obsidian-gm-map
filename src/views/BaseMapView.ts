@@ -32,6 +32,7 @@ export abstract class BaseMapView extends ItemView {
   protected image: HTMLImageElement | null = null;
   protected unsubscribe: (() => void) | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private detachWindowResize: (() => void) | null = null;
 
   /** The brush mask currently loaded into the renderer's fog layer. */
   protected loadedBrush: string | null = null;
@@ -85,6 +86,8 @@ export abstract class BaseMapView extends ItemView {
     this.unsubscribe = null;
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
+    this.detachWindowResize?.();
+    this.detachWindowResize = null;
     this.renderer?.destroy();
     this.renderer = null;
     this.store?.flush();
@@ -179,9 +182,14 @@ export abstract class BaseMapView extends ItemView {
   }
 
   private setupCanvasSize(): void {
+    // Resolve the window the canvas actually lives in. The player view is moved
+    // into an Electron pop-out window, which has its own document, window and
+    // (potentially) device pixel ratio.
+    const win = (this.canvasWrap.ownerDocument.defaultView ?? window) as Window &
+      typeof globalThis;
     const resize = () => {
       const rect = this.canvasWrap.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = win.devicePixelRatio || 1;
       this.canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       this.canvas.height = Math.max(1, Math.floor(rect.height * dpr));
       this.canvas.style.width = `${rect.width}px`;
@@ -191,8 +199,15 @@ export abstract class BaseMapView extends ItemView {
       this.canvas.dispatchEvent(new CustomEvent("gm-map-resized"));
       this.renderer?.requestRender();
     };
-    this.resizeObserver = new ResizeObserver(resize);
+    // Construct the observer from the pop-out window. A ResizeObserver created
+    // in the main window does not fire for elements in another window, which
+    // left the player canvas stretched/blurry after the pop-out was enlarged.
+    this.resizeObserver = new win.ResizeObserver(resize);
     this.resizeObserver.observe(this.canvasWrap);
+    // Safety net: the pop-out window's own resize event reliably fires when it
+    // is enlarged, even if the ResizeObserver is delayed or missed.
+    win.addEventListener("resize", resize);
+    this.detachWindowResize = () => win.removeEventListener("resize", resize);
     resize();
   }
 
@@ -203,7 +218,8 @@ export abstract class BaseMapView extends ItemView {
   /** Canvas-space point (accounting for device pixel ratio) from a mouse event. */
   protected eventPoint(e: MouseEvent): Point {
     const rect = this.canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+    const win = this.canvas.ownerDocument.defaultView ?? window;
+    const dpr = win.devicePixelRatio || 1;
     return {
       x: (e.clientX - rect.left) * dpr,
       y: (e.clientY - rect.top) * dpr,
