@@ -6,8 +6,10 @@ export interface TokenEditResult {
   label: string;
   color: string;
   radius: number;
+  image: string | undefined;
   creature: string | undefined;
   visible: boolean;
+  playerControlled: boolean;
 }
 
 /** Modal to create or edit a token, including linking a bestiary creature. */
@@ -17,7 +19,7 @@ export class TokenEditModal extends Modal {
   constructor(
     app: App,
     private statblocks: StatblockIntegration,
-    token: Pick<Token, "label" | "color" | "radius" | "creature" | "visible">,
+    token: Pick<Token, "label" | "color" | "radius" | "image" | "creature" | "visible" | "playerControlled">,
     private onSubmit: (result: TokenEditResult | null) => void,
     private onDelete?: () => void
   ) {
@@ -26,8 +28,10 @@ export class TokenEditModal extends Modal {
       label: token.label ?? "",
       color: token.color ?? "#c0392b",
       radius: token.radius ?? 30,
+      image: token.image,
       creature: token.creature,
       visible: token.visible ?? true,
+      playerControlled: token.playerControlled ?? false,
     };
   }
 
@@ -55,10 +59,29 @@ export class TokenEditModal extends Modal {
         );
 
       new Setting(contentEl)
+        .setName("Image")
+        .setDesc("Vault path to a picture for the token (clipped to the circle). Leave empty for a solid color.")
+        .addText((t) =>
+          t
+            .setPlaceholder("assets/goblin.png")
+            .setValue(this.result.image ?? "")
+            .onChange((v) => (this.result.image = v.trim() || undefined))
+        );
+
+      new Setting(contentEl)
         .setName("Visible to players")
         .setDesc("When off, this token is hidden from the player view.")
         .addToggle((t) =>
           t.setValue(this.result.visible).onChange((v) => (this.result.visible = v))
+        );
+
+      new Setting(contentEl)
+        .setName("Player controlled")
+        .setDesc("Players can move this token from the iPad app. It is always shown to them.")
+        .addToggle((t) =>
+          t
+            .setValue(this.result.playerControlled)
+            .onChange((v) => (this.result.playerControlled = v))
         );
 
       let creatures: string[] = [];

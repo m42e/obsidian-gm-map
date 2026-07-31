@@ -63,10 +63,22 @@ export interface Token {
   label: string;
   /** CSS color of the token body. */
   color: string;
+  /**
+   * Optional vault-relative (or note-relative) path to an image used as the
+   * token's body. When set, the image is drawn clipped to the token circle
+   * instead of the solid color fill and initial letter.
+   */
+  image?: string;
   /** Name of a Fantasy Statblocks bestiary creature, if linked. */
   creature?: string;
   /** Whether players can see this token (always true for now; reserved). */
   visible: boolean;
+  /**
+   * Whether players may move this token from the iPad app. Player-controlled
+   * tokens are also always shown to players (they can see their own token even
+   * under fog). DM/monster tokens default to false.
+   */
+  playerControlled?: boolean;
 }
 
 /** A DM-only marker. Never serialized to or rendered in the player view. */
@@ -191,6 +203,8 @@ export interface GmMapSettings {
   feetPerCell: number;
   /** Physical DPI of the player's screen (used to display 1 grid cell = 1 inch). */
   playerScreenDpi: number;
+  /** Request real OS fullscreen for the player pop-out window when it opens. */
+  playerFullscreen: boolean;
   /** Font size in pixels for token and marker labels. */
   defaultLabelSize: number;
   /** Whether to snap tokens to the nearest grid cell center (or corner for even-sized creatures) by default. */
@@ -201,6 +215,10 @@ export interface GmMapSettings {
   gridLineWidth: number;
   /** Color of attention pings dropped by players. */
   pingColor: string;
+  /** Start the iPad map server automatically when the plugin loads. */
+  serverEnabled: boolean;
+  /** TCP port the iPad map server listens on. */
+  serverPort: number;
 }
 
 export const DEFAULT_SETTINGS: GmMapSettings = {
@@ -212,11 +230,14 @@ export const DEFAULT_SETTINGS: GmMapSettings = {
   defaultSpellColor: "#e67e22",
   feetPerCell: 5,
   playerScreenDpi: 96,
+  playerFullscreen: false,
   defaultLabelSize: 12,
   snapToGrid: true,
   gridColor: "#000000",
   gridLineWidth: 1.5,
   pingColor: "#ff5252",
+  serverEnabled: false,
+  serverPort: 3010,
 };
 
 export const STATE_VERSION = 1;

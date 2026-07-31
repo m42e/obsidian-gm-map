@@ -9,30 +9,47 @@ export class TokenLayer {
     tokens: Token[],
     selectedId: string | null,
     labelSize = 12,
-    dmMode = false
+    dmMode = false,
+    getImage?: (token: Token) => HTMLImageElement | null
   ): void {
     for (const token of tokens) {
       const center = viewport.toScreen({ x: token.x, y: token.y });
       const r = token.radius * viewport.scale;
       const hidden = dmMode && !token.visible;
+      const image = token.image ? getImage?.(token) ?? null : null;
 
       ctx.save();
       if (hidden) ctx.globalAlpha = 0.35;
       ctx.beginPath();
       ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = token.color;
-      ctx.fill();
+      if (image) {
+        // Draw the picture clipped to the circle, scaled to cover (center crop).
+        ctx.save();
+        ctx.clip();
+        const iw = image.naturalWidth || image.width;
+        const ih = image.naturalHeight || image.height;
+        const cover = Math.max((2 * r) / iw, (2 * r) / ih);
+        const dw = iw * cover;
+        const dh = ih * cover;
+        ctx.drawImage(image, center.x - dw / 2, center.y - dh / 2, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = token.color;
+        ctx.fill();
+      }
       ctx.lineWidth = token.id === selectedId ? 3 : 2;
       ctx.strokeStyle = token.id === selectedId ? "#ffffff" : "rgba(0,0,0,0.6)";
       ctx.stroke();
 
-      // Initial letter inside the token.
-      const initial = (token.label || token.creature || "?").trim().charAt(0).toUpperCase();
-      ctx.fillStyle = "#ffffff";
-      ctx.font = `${Math.max(8, r)}px sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(initial, center.x, center.y);
+      // Initial letter inside the token (only when there is no picture).
+      if (!image) {
+        const initial = (token.label || token.creature || "?").trim().charAt(0).toUpperCase();
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `${Math.max(8, r)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(initial, center.x, center.y);
+      }
 
       // Label below the token.
       if (token.label) {

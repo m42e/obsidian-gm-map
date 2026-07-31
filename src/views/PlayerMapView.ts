@@ -36,11 +36,51 @@ export class PlayerMapView extends BaseMapView {
   async onOpen(): Promise<void> {
     await super.onOpen();
     this.containerEl.ownerDocument.body.addClass("gm-map-player-popout");
+    if (this.plugin.settings.playerFullscreen) {
+      this.enterFullscreen();
+    }
   }
 
   async onClose(): Promise<void> {
-    this.containerEl.ownerDocument.body.removeClass("gm-map-player-popout");
+    const doc = this.containerEl.ownerDocument;
+    doc.body.removeClass("gm-map-player-popout");
+    if (doc.fullscreenElement) {
+      void doc.exitFullscreen?.().catch(() => {});
+    }
     await super.onClose();
+  }
+
+  /**
+   * Put the map content into real OS fullscreen so the map itself fills the
+   * whole screen (we fullscreen the view's content element, not the window's
+   * root, so no Obsidian chrome shows). Some platforms allow this
+   * programmatically; others require a user gesture, so we also arm the first
+   * interaction in the window as a fallback. We stop trying once it succeeds so
+   * the DM can leave fullscreen (Escape) without being forced back in. Toggled
+   * by the "Fullscreen player view" setting.
+   */
+  private enterFullscreen(): void {
+    const doc = this.containerEl.ownerDocument;
+    const target = this.contentEl;
+    let armed = true;
+    const attempt = () => {
+      if (!armed) return;
+      if (doc.fullscreenElement) {
+        armed = false;
+        return;
+      }
+      target
+        .requestFullscreen?.()
+        ?.then(() => {
+          armed = false;
+        })
+        .catch(() => {
+          /* Needs a user gesture; the armed listeners below retry on input. */
+        });
+    };
+    attempt();
+    doc.addEventListener("pointerdown", attempt, { once: true, capture: true });
+    doc.addEventListener("keydown", attempt, { once: true, capture: true });
   }
 
   protected buildChrome(root: HTMLElement): void {

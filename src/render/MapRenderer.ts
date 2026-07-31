@@ -1,6 +1,7 @@
 import { MapStateStore } from "../state/MapStateStore";
 import { FogLayer } from "../fog/FogLayer";
 import { TokenLayer } from "../tokens/TokenLayer";
+import { TokenImageCache } from "../tokens/TokenImageCache";
 import { MarkerLayer } from "../markers/MarkerLayer";
 import { SpellLayer } from "../spells/SpellLayer";
 import { PingLayer } from "../pings/PingLayer";
@@ -17,6 +18,7 @@ export class MapRenderer {
   readonly viewport: Viewport;
   readonly fog: FogLayer;
   private readonly tokens = new TokenLayer();
+  private tokenImages: TokenImageCache | null = null;
   private readonly markers = new MarkerLayer();
   private readonly spells = new SpellLayer();
   private readonly pings = new PingLayer();
@@ -56,6 +58,15 @@ export class MapRenderer {
   async init(): Promise<void> {
     await this.fog.loadBrush(this.store.state.fog.brush);
     this.fog.markDirty();
+  }
+
+  /**
+   * Provide a resolver that turns a token's `image` key (a vault path) into a
+   * loadable URL. Enables drawing pictures clipped to token circles; loaded
+   * images trigger a re-render automatically.
+   */
+  setTokenImageResolver(resolve: (key: string) => string | null): void {
+    this.tokenImages = new TokenImageCache(resolve, () => this.requestRender());
   }
 
   /** The window that owns this renderer's canvas (the pop-out for the player
@@ -152,7 +163,15 @@ export class MapRenderer {
               this.fog.isPointRevealed({ x: t.x, y: t.y }, this.store.state.fog)
           )
         : this.store.state.tokens;
-    this.tokens.render(ctx, viewport, visibleTokens, this.selectedTokenId, this.labelSize, this.mode === "dm");
+    this.tokens.render(
+      ctx,
+      viewport,
+      visibleTokens,
+      this.selectedTokenId,
+      this.labelSize,
+      this.mode === "dm",
+      this.tokenImages ? (t) => this.tokenImages!.get(t.image!) : undefined
+    );
 
     // Markers (DM only).
     if (this.mode === "dm") {

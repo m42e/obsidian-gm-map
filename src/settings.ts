@@ -200,5 +200,56 @@ export class GmMapSettingTab extends PluginSettingTab {
             }
           })
       );
+
+    new Setting(containerEl)
+      .setName("Fullscreen player view")
+      .setDesc(
+        "Put the player pop-out window into real OS fullscreen when it opens. If your platform blocks automatic fullscreen, click once inside the player window to enter it; press Esc to leave. Disable this if it causes display issues."
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.playerFullscreen)
+          .onChange(async (value) => {
+            this.plugin.settings.playerFullscreen = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl).setName("iPad app (LAN)").setHeading();
+
+    new Setting(containerEl)
+      .setName("Enable iPad map server")
+      .setDesc(
+        "Run a small server so the GM Map iPad app can connect over your local WiFi. You can also start it on demand with the \u201cShare to iPad\u201d button in the DM view. Desktop only."
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.serverEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.serverEnabled = value;
+            await this.plugin.saveSettings();
+            if (value) this.plugin.server.start(this.plugin.settings.serverPort);
+            else this.plugin.server.dispose();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Server port")
+      .setDesc("TCP port the iPad map server listens on (default 3010).")
+      .addText((text) =>
+        text
+          .setPlaceholder("3010")
+          .setValue(String(this.plugin.settings.serverPort))
+          .onChange(async (value) => {
+            const n = Number(value);
+            if (Number.isInteger(n) && n >= 1024 && n <= 65535) {
+              this.plugin.settings.serverPort = n;
+              await this.plugin.saveSettings();
+              if (this.plugin.server.running) {
+                this.plugin.server.start(n);
+              }
+            }
+          })
+      );
   }
 }

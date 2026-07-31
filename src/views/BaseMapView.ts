@@ -4,18 +4,7 @@ import { MapConfig } from "../types";
 import { MapStateStore, StoreEvent } from "../state/MapStateStore";
 import { MapRenderer, RenderMode } from "../render/MapRenderer";
 import { Point } from "../render/Viewport";
-
-/** Resolve a relative image path (e.g. ./assets/img.jpg) against a note's vault path. */
-function resolveRelative(notePath: string, relativePath: string): string {
-  const parts = notePath.split("/");
-  parts.pop(); // remove note filename, keep directory segments
-  for (const seg of relativePath.split("/")) {
-    if (seg === "." || seg === "") continue;
-    else if (seg === "..") parts.pop();
-    else parts.push(seg);
-  }
-  return parts.join("/");
-}
+import { resolveImageVaultPath } from "../util/imagePath";
 
 /**
  * Shared functionality for the DM and player map views: image loading, canvas
@@ -129,6 +118,9 @@ export abstract class BaseMapView extends ItemView {
     this.renderer.gridColor = this.plugin.settings.gridColor;
     this.renderer.gridLineWidth = this.plugin.settings.gridLineWidth;
     this.renderer.feetPerCell = this.plugin.settings.feetPerCell;
+    this.renderer.setTokenImageResolver((key) =>
+      this.resolveImageUrl(key, config.notePath)
+    );
     await this.renderer.init();
     this.loadedBrush = this.store.state.fog.brush;
 
@@ -260,12 +252,7 @@ export abstract class BaseMapView extends ItemView {
 
   /** Resolve a vault image path to a loaded HTMLImageElement. */
   private async resolveImage(path: string, notePath?: string): Promise<HTMLImageElement | null> {
-    const resolvedPath =
-      path.startsWith(".") && notePath
-        ? resolveRelative(notePath, path)
-        : path.startsWith("/")
-        ? path.slice(1)
-        : path;
+    const resolvedPath = resolveImageVaultPath(path, notePath);
     const file = this.app.vault.getAbstractFileByPath(resolvedPath);
     if (!(file instanceof TFile)) return null;
     const url = this.app.vault.getResourcePath(file);
@@ -275,5 +262,12 @@ export abstract class BaseMapView extends ItemView {
       img.onerror = () => resolve(null);
       img.src = url;
     });
+  }
+
+  /** Resolve a vault image path to a displayable resource URL (sync), or null. */
+  private resolveImageUrl(path: string, notePath?: string): string | null {
+    const resolvedPath = resolveImageVaultPath(path, notePath);
+    const file = this.app.vault.getAbstractFileByPath(resolvedPath);
+    return file instanceof TFile ? this.app.vault.getResourcePath(file) : null;
   }
 }

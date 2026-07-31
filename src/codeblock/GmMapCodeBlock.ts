@@ -17,6 +17,7 @@ import { RawMapBlock, normalizeMarkers, normalizeSpells, normalizeTokens } from 
  * gridOverlay: true
  * tokens:
  *   - { x: 400, y: 320, label: Goblin, color: "#c0392b", creature: Goblin }
+ *   - { x: 600, y: 200, label: Hero, image: assets/hero.png, playerControlled: true }
  * markers:
  *   - { x: 800, y: 600, label: Trap, color: "#f1c40f", note: Pit trap }
  * ```

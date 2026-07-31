@@ -47,10 +47,17 @@ const context = await esbuild.context({
     "@lezer/common",
     "@lezer/highlight",
     "@lezer/lr",
+    // Optional native add-ons that `ws` requires lazily; not needed at runtime.
+    "bufferutil",
+    "utf-8-validate",
     ...builtinModules,
   ],
   format: "cjs",
   target: "es2020",
+  // Bundle for the Node-enabled Electron renderer Obsidian runs in. This is
+  // required so node-only deps (ws) resolve to their real implementation rather
+  // than the "browser" shim that throws. DOM APIs remain available at runtime.
+  platform: "node",
   logLevel: "info",
   sourcemap: prod ? false : "inline",
   treeShaking: true,

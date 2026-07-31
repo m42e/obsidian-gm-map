@@ -52,11 +52,16 @@ export function normalizeTokens(
       radius: radius && radius > 0 ? radius : Math.max(12, defaults.grid / 2),
       label: typeof r.label === "string" ? r.label : "",
       color: typeof r.color === "string" ? r.color : defaults.tokenColor,
+      image:
+        typeof r.image === "string" && r.image.trim()
+          ? r.image.trim()
+          : undefined,
       creature:
         typeof r.creature === "string" && r.creature.trim()
           ? r.creature.trim()
           : undefined,
       visible: r.visible === false ? false : true,
+      playerControlled: r.playerControlled === true ? true : undefined,
     });
   });
   return tokens;
@@ -145,8 +150,10 @@ export function sigFrom(tokens: Token[], markers: Marker[], spells: Spell[] = []
       Math.round(t.radius),
       t.label,
       t.color,
+      t.image ?? null,
       t.creature ?? null,
       t.visible,
+      t.playerControlled ?? false,
     ]),
     m: markers.map((m) => [
       m.id,
@@ -196,8 +203,10 @@ export function buildMapYaml(config: MapConfig, state: MapState): string {
       color: t.color,
     };
     if (t.label) o.label = t.label;
+    if (t.image) o.image = t.image;
     if (t.creature) o.creature = t.creature;
     if (!t.visible) o.visible = false;
+    if (t.playerControlled) o.playerControlled = true;
     return o;
   });
 

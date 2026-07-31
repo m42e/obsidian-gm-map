@@ -76,6 +76,13 @@
   padding: 0;
 }
 
+/* Real fullscreen (player view): the map content fills the whole screen. */
+.gm-map-view-root:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: var(--background-primary);
+}
+
 /* Thin draggable bar for the player pop-out window */
 .gm-map-player-dragbar {
   flex: 0 0 auto;
@@ -359,3 +366,86 @@
   min-height: 0;
   overflow: hidden;
 }
+
+/* ===================== Share to iPad panel ===================== */
+.gm-map-share-panel {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 260px;
+  padding: 10px 12px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-s);
+  z-index: 20;
+}
+
+.gm-map-share-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gm-map-share-title {
+  font-weight: 600;
+}
+
+.gm-map-share-close {
+  display: inline-flex;
+  padding: 2px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.gm-map-share-close:hover {
+  color: var(--text-normal);
+}
+
+.gm-map-share-qr {
+  width: 100%;
+  max-width: 220px;
+  align-self: center;
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 6px;
+  image-rendering: pixelated;
+}
+
+.gm-map-share-hint {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.gm-map-share-urls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gm-map-share-url {
+  width: 100%;
+  text-align: center;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+
+.gm-map-share-url.is-active {
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+}
+
+.gm-map-share-port {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+

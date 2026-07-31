@@ -3,6 +3,8 @@ import { BaseMapView } from "./BaseMapView";
 import { RenderMode } from "../render/MapRenderer";
 import { DmTool, Marker, Spell, Token, VIEW_TYPE_DM, VIEW_TYPE_PLAYER } from "../types";
 import { Point } from "../render/Viewport";
+import { snapToIntersection, snapTokenPoint } from "../render/grid";
+import { toDataURL as qrToDataURL } from "qrcode";
 import { StatblockPanel } from "../ui/StatblockPanel";
 import { TokenEditModal } from "../ui/TokenEditModal";
 import { MarkerEditModal } from "../ui/MarkerEditModal";
@@ -23,6 +25,7 @@ export class DmMapView extends BaseMapView {
   private brushSize: number;
   private statblockPanel: StatblockPanel | null = null;
   private gridPanel: GridAlignPanel | null = null;
+  private sharePanel: HTMLElement | null = null;
   private gridAlignBtn: HTMLElement | null = null;
   private zoomSlider: HTMLInputElement | null = null;
   private toolButtons = new Map<DmTool, HTMLElement>();
@@ -59,6 +62,8 @@ export class DmMapView extends BaseMapView {
     this.statblockPanel = null;
     this.gridPanel?.destroy();
     this.gridPanel = null;
+    this.sharePanel?.remove();
+    this.sharePanel = null;
     this.gridAlignBtn = null;
     this.zoomSlider = null;
     this.snapBtn = null;
@@ -226,6 +231,14 @@ export class DmMapView extends BaseMapView {
     playerBtn.onclick = () => {
       if (this.config) void this.plugin.openPlayerView(this.config);
     };
+
+    const shareBtn = bar.createEl("button", {
+      cls: "gm-map-tool gm-map-open-player",
+      attr: { title: "Share this map to an iPad over WiFi" },
+    });
+    setIcon(shareBtn, "share-2");
+    shareBtn.createSpan({ text: "Share to iPad" });
+    shareBtn.onclick = () => this.toggleSharePanel();
   }
 
   private setTool(tool: DmTool): void {
@@ -287,6 +300,62 @@ export class DmMapView extends BaseMapView {
 
   protected handleStoreEvent(event: import("../state/MapStateStore").StoreEvent): void {
     if (event === "pan") this.updatePlayerViewRect();
+  }
+
+  /** Toggle a floating panel that shares this map to the iPad app and shows a
+   *  scannable QR code with the connection URL(s). */
+  private toggleSharePanel(): void {
+    if (this.sharePanel) {
+      this.sharePanel.remove();
+      this.sharePanel = null;
+      return;
+    }
+    if (!this.config || !this.store) return;
+    const info = this.plugin.shareMapToServer(this.config, this.store);
+    if (!info) return;
+    const { urls, port } = info;
+
+    const panel = this.canvasWrap.createDiv({ cls: "gm-map-share-panel" });
+    const header = panel.createDiv({ cls: "gm-map-share-header" });
+    header.createSpan({ cls: "gm-map-share-title", text: "Share to iPad" });
+    const closeBtn = header.createEl("button", {
+      cls: "gm-map-share-close",
+      attr: { "aria-label": "Close" },
+    });
+    setIcon(closeBtn, "x");
+    closeBtn.onclick = () => {
+      panel.remove();
+      this.sharePanel = null;
+    };
+
+    const qrImg = panel.createEl("img", { cls: "gm-map-share-qr" });
+    panel.createDiv({
+      cls: "gm-map-share-hint",
+      text: "Scan with the GM Map iPad app, or open a URL below in a browser to test.",
+    });
+
+    const list = panel.createDiv({ cls: "gm-map-share-urls" });
+    const buttons: HTMLElement[] = [];
+    const showQr = (url: string, active: HTMLElement) => {
+      for (const b of buttons) b.toggleClass("is-active", b === active);
+      qrToDataURL(url, { width: 220, margin: 1 })
+        .then((data: string) => {
+          qrImg.src = data;
+        })
+        .catch(() => qrImg.removeAttribute("src"));
+    };
+    urls.forEach((url) => {
+      const b = list.createEl("button", { cls: "gm-map-share-url", text: url });
+      b.onclick = () => showQr(url, b);
+      buttons.push(b);
+    });
+    panel.createDiv({
+      cls: "gm-map-share-port",
+      text: `Listening on port ${port}. The iPad must be on the same WiFi network.`,
+    });
+
+    if (buttons.length > 0) showQr(urls[0], buttons[0]);
+    this.sharePanel = panel;
   }
 
   /** Compute and set the player viewport rectangle on the renderer.
@@ -602,25 +671,7 @@ export class DmMapView extends BaseMapView {
    */
   private snapPoint(img: Point, radius: number): Point {
     if (!this.snapToGrid || !this.store) return img;
-    const { cellSize, originX, originY } = this.store.state.fog;
-    if (cellSize <= 0) return img;
-
-    // Determine creature size in cells (diameter / cellSize, rounded).
-    const sizeInCells = Math.max(1, Math.round((radius * 2) / cellSize));
-
-    if (sizeInCells % 2 === 0) {
-      // Even (2×2, 4×4 …): center sits on a grid corner.
-      return {
-        x: Math.round((img.x - originX) / cellSize) * cellSize + originX,
-        y: Math.round((img.y - originY) / cellSize) * cellSize + originY,
-      };
-    } else {
-      // Odd (1×1, 3×3 …): center sits in the middle of a cell.
-      return {
-        x: (Math.floor((img.x - originX) / cellSize) + 0.5) * cellSize + originX,
-        y: (Math.floor((img.y - originY) / cellSize) + 0.5) * cellSize + originY,
-      };
-    }
+    return snapTokenPoint(img, radius, this.store.state.fog);
   }
 
   // ---- Tokens ----
@@ -645,7 +696,9 @@ export class DmMapView extends BaseMapView {
         token.label = result.label;
         token.color = result.color;
         token.radius = result.radius;
+        token.image = result.image;
         token.creature = result.creature;
+        token.playerControlled = result.playerControlled;
         // Re-snap with the final radius chosen in the modal.
         const snapped = this.snapPoint(img, result.radius);
         token.x = snapped.x;
@@ -666,8 +719,10 @@ export class DmMapView extends BaseMapView {
           label: result.label,
           color: result.color,
           radius: result.radius,
+          image: result.image,
           creature: result.creature,
           visible: result.visible,
+          playerControlled: result.playerControlled,
         });
       },
       () => {
@@ -727,12 +782,7 @@ export class DmMapView extends BaseMapView {
   /** Snap a spell's origin to the nearest grid intersection when snap is on. */
   private snapSpellPoint(img: Point): Point {
     if (!this.snapToGrid || !this.store) return img;
-    const { cellSize, originX, originY } = this.store.state.fog;
-    if (cellSize <= 0) return img;
-    return {
-      x: Math.round((img.x - originX) / cellSize) * cellSize + originX,
-      y: Math.round((img.y - originY) / cellSize) * cellSize + originY,
-    };
+    return snapToIntersection(img, this.store.state.fog);
   }
 
   private createSpell(img: Point): void {

@@ -1,4 +1,4 @@
-import { Notice, Plugin } from "obsidian";
+import { Notice, Plugin, TFile } from "obsidian";
 import {
   DEFAULT_SETTINGS,
   GmMapSettings,
@@ -10,6 +10,8 @@ import { GmMapSettingTab } from "./src/settings";
 import { StatePersistence } from "./src/state/persistence";
 import { MapStateStore, StoreRegistry } from "./src/state/MapStateStore";
 import { StatblockIntegration } from "./src/integration/statblocks";
+import { MapServer } from "./src/server/MapServer";
+import { resolveImageVaultPath } from "./src/util/imagePath";
 import { DmMapView } from "./src/views/DmMapView";
 import { PlayerMapView } from "./src/views/PlayerMapView";
 import { GmMapCodeBlock } from "./src/codeblock/GmMapCodeBlock";
@@ -20,6 +22,7 @@ export default class GmMapPlugin extends Plugin {
   persistence!: StatePersistence;
   registry!: StoreRegistry;
   statblocks!: StatblockIntegration;
+  server!: MapServer;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -27,6 +30,10 @@ export default class GmMapPlugin extends Plugin {
     this.persistence = new StatePersistence(this);
     this.registry = new StoreRegistry(this.persistence);
     this.statblocks = new StatblockIntegration(this.app);
+    this.server = new MapServer(this.app, () => this.settings);
+    if (this.settings.serverEnabled) {
+      this.server.start(this.settings.serverPort);
+    }
 
     this.registerView(
       VIEW_TYPE_DM,
@@ -44,6 +51,7 @@ export default class GmMapPlugin extends Plugin {
   }
 
   onunload(): void {
+    this.server?.dispose();
     this.registry?.flushAll();
   }
 
@@ -91,6 +99,28 @@ export default class GmMapPlugin extends Plugin {
       state: { config },
     });
     await this.app.workspace.revealLeaf(leaf);
+  }
+
+  /**
+   * Start (if needed) the iPad map server, publish the given map, and return the
+   * reachable base URLs + port for display. Returns null if the map image could
+   * not be resolved.
+   */
+  shareMapToServer(
+    config: MapConfig,
+    store: MapStateStore
+  ): { urls: string[]; port: number } | null {
+    if (!this.server.running) {
+      this.server.start(this.settings.serverPort);
+    }
+    const path = resolveImageVaultPath(config.image, config.notePath);
+    const file = this.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof TFile)) {
+      new Notice("GM Map: could not resolve the map image to share.");
+      return null;
+    }
+    void this.server.publish({ config, store, imageFile: file });
+    return { urls: this.server.addresses(), port: this.server.port };
   }
 
   /** Open (or focus) the player view in a pop-out window for the second screen. */

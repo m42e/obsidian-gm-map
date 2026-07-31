@@ -75,7 +75,7 @@ An [Obsidian](https://obsidian.md) plugin for tabletop RPG game masters. Display
 
 ![Player view](doc/images/player_view.png)
 
-**Plugin settings** — configure default grid size, fog opacity, brush size, colors, label size, and player screen DPI.
+**Plugin settings** — configure default grid size, fog opacity, brush size, colors, label size, player screen DPI, and optional fullscreen for the player view.
 
 ![Plugin settings](doc/images/settings.png)
 
@@ -590,6 +590,7 @@ Open **Settings → GM Map** to configure global defaults. Per-map overrides in 
 | **Feet per grid cell** | `5` | How many feet one grid square represents. Spell areas are sized in feet and scaled to the grid using this value (D&D standard is 5 ft.). |
 | **Snap tokens to grid** | enabled | Default state of the snap-to-grid toggle in the DM toolbar. When on, newly placed and dragged tokens snap to grid cell centers (odd-sized creatures) or grid corners (even-sized creatures). |
 | **Player screen DPI** | `96` | Physical pixels-per-inch of the player's monitor. Used to scale the map so that one grid cell equals one physical inch on screen (useful for virtual tabletop-style play on a TV or large monitor). Common values: `96` (standard HD), `109` (24″ 1080p), `163` (27″ 4K). |
+| **Fullscreen player view** | off | Put the player pop-out window into real OS fullscreen when it opens. If your platform blocks automatic fullscreen, click once inside the player window to enter it; press <kbd>Esc</kbd> to leave. Turn this off if it causes display issues. |
 
 ---
 
