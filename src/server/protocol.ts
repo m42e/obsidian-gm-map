@@ -4,6 +4,7 @@
  * Transport:
  *  - HTTP  GET  /map/<id>/image                  -> raw image bytes of the active map
  *  - HTTP  GET  /map/<id>/token/<tokenId>/image  -> raw image bytes of a token
+ *  - HTTP  GET  /map/<id>/picture/<pictureId>/image -> raw embedded picture bytes
  *  - WS         /ws                               -> realtime state channel
  *
  * There is no authentication: the server is meant for a trusted local network.
@@ -73,6 +74,19 @@ export interface NetPing {
   createdAt: number;
 }
 
+/** A vault image the DM explicitly chose to present to player clients. */
+export interface NetPicture {
+  /** Opaque identifier valid for the current published map session. */
+  id: string;
+  /** Display name derived from the image filename. */
+  name: string;
+  /** Natural dimensions when known without decoding the image. */
+  width: number | null;
+  height: number | null;
+  /** HTTP path (relative to the server root) to fetch the image bytes. */
+  imagePath: string;
+}
+
 /** Static-ish information about the published map. */
 export interface NetMapInfo {
   mapId: string;
@@ -98,6 +112,8 @@ export interface NetSnapshot {
   gridOverlay: boolean;
   /** DM "look here" focus point in image pixels, if set. */
   pan?: { x: number; y: number };
+  /** Picture currently covering the map because the DM presented it. */
+  presentedPicture?: NetPicture;
 }
 
 // ---- Server -> Client ----
@@ -110,6 +126,8 @@ export type ServerMessage =
   | { type: "grid"; fog: NetFog; gridOverlay: boolean }
   | { type: "pan"; pan: { x: number; y: number } }
   | { type: "ping"; ping: NetPing }
+  /** Present a picture full-screen, or return to the map when null. */
+  | { type: "picture"; picture: NetPicture | null }
   /** No map is currently being shared; the client should wait for a `hello`. */
   | { type: "idle" };
 

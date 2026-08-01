@@ -1,4 +1,4 @@
-import { Notice, Plugin, TFile } from "obsidian";
+import { MarkdownRenderChild, Menu, Notice, Plugin, TFile } from "obsidian";
 import {
   DEFAULT_SETTINGS,
   GmMapSettings,
@@ -23,6 +23,7 @@ export default class GmMapPlugin extends Plugin {
   registry!: StoreRegistry;
   statblocks!: StatblockIntegration;
   server!: MapServer;
+  private pictureMenus = new WeakSet<Menu>();
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -46,6 +47,28 @@ export default class GmMapPlugin extends Plugin {
 
     const codeBlock = new GmMapCodeBlock(this);
     this.registerMarkdownCodeBlockProcessor("gm-map", codeBlock.process);
+
+    this.registerMarkdownPostProcessor((element, context) => {
+      if (!element.querySelector(".internal-embed[src] img")) return;
+      context.addChild(new ImageContextMenuChild(element, this, context.sourcePath));
+    });
+
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        if (!(file instanceof TFile) || !this.server.supportsPicture(file)) return;
+        this.addPictureMenuItem(menu, file);
+      })
+    );
+
+    this.addCommand({
+      id: "hide-picture-on-ipad",
+      name: "Hide picture on iPad",
+      checkCallback: (checking) => {
+        const canHide = this.server.presentedPicturePath !== null;
+        if (!checking && canHide) this.hidePictureOnServer();
+        return canHide;
+      },
+    });
 
     this.addSettingTab(new GmMapSettingTab(this.app, this));
   }
@@ -123,6 +146,56 @@ export default class GmMapPlugin extends Plugin {
     return { urls: this.server.addresses(), port: this.server.port };
   }
 
+  private showPictureOnServer(file: TFile): void {
+    if (!this.server.sharing) {
+      new Notice("GM Map: share a map to iPad before showing a picture.");
+      return;
+    }
+    if (!this.server.presentPicture(file)) {
+      new Notice("GM Map: this picture format is not supported.");
+      return;
+    }
+    const clients = this.server.connectedClientCount;
+    new Notice(
+      clients > 0
+        ? `GM Map: showing “${file.basename}” on ${clients} iPad client${clients === 1 ? "" : "s"}.`
+        : `GM Map: “${file.basename}” is ready; no iPad client is connected yet.`
+    );
+  }
+
+  private hidePictureOnServer(): void {
+    if (this.server.dismissPicture()) {
+      new Notice("GM Map: returned iPad clients to the map.");
+    }
+  }
+
+  private addPictureMenuItem(menu: Menu, file: TFile): void {
+    if (this.pictureMenus.has(menu)) return;
+    this.pictureMenus.add(menu);
+    const isPresented = this.server.presentedPicturePath === file.path;
+    menu.addItem((item) =>
+      item
+        .setTitle(isPresented ? "Hide from iPad" : "Show on iPad")
+        .setIcon(isPresented ? "monitor-off" : "monitor-up")
+        .onClick(() => {
+          if (isPresented) this.hidePictureOnServer();
+          else this.showPictureOnServer(file);
+        })
+    );
+  }
+
+  showRenderedImageMenu(event: MouseEvent, linktext: string, sourcePath: string): void {
+    const file = this.app.metadataCache.getFirstLinkpathDest(linktext, sourcePath);
+    if (!(file instanceof TFile) || !this.server.supportsPicture(file)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    const menu = Menu.forEvent(event);
+    this.app.workspace.handleLinkContextMenu(menu, linktext, sourcePath);
+    this.addPictureMenuItem(menu, file);
+    menu.showAtMouseEvent(event);
+  }
+
   /** Open (or focus) the player view in a pop-out window for the second screen. */
   async openPlayerView(config: MapConfig): Promise<void> {
     const existing = this.app.workspace
@@ -142,5 +215,30 @@ export default class GmMapPlugin extends Plugin {
       state: { config },
     });
     await this.app.workspace.revealLeaf(leaf);
+  }
+}
+
+class ImageContextMenuChild extends MarkdownRenderChild {
+  constructor(
+    containerEl: HTMLElement,
+    private plugin: GmMapPlugin,
+    private sourcePath: string
+  ) {
+    super(containerEl);
+  }
+
+  onload(): void {
+    this.registerDomEvent(
+      this.containerEl,
+      "contextmenu",
+      (event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.tagName !== "IMG") return;
+        const embed = target.closest<HTMLElement>(".internal-embed[src]");
+        const linktext = embed?.getAttribute("src");
+        if (linktext) this.plugin.showRenderedImageMenu(event, linktext, this.sourcePath);
+      },
+      { capture: true }
+    );
   }
 }

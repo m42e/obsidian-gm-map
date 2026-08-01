@@ -1,4 +1,5 @@
 import { App, Notice, TFile } from "obsidian";
+import { randomBytes } from "crypto";
 import { createServer, IncomingMessage, Server as HttpServer, ServerResponse } from "http";
 import { networkInterfaces } from "os";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
@@ -12,6 +13,7 @@ import {
   GM_MAP_IMAGE_PREFIX,
   GM_MAP_WS_PATH,
   NetMapInfo,
+  NetPicture,
   ServerMessage,
   parseClientMessage,
 } from "./protocol";
@@ -33,7 +35,13 @@ export interface PublishedMap {
 interface ActiveSession extends PublishedMap {
   fog: FogLayer;
   brushLoaded: string | null;
+  picture: PublishedPicture | null;
   unsubscribe: () => void;
+}
+
+interface PublishedPicture {
+  info: NetPicture;
+  file: TFile;
 }
 
 /**
@@ -72,6 +80,18 @@ export class MapServer {
 
   get activeMapId(): string | null {
     return this.active?.config.id ?? null;
+  }
+
+  get connectedClientCount(): number {
+    return this.clients.size;
+  }
+
+  get presentedPicturePath(): string | null {
+    return this.active?.picture?.file.path ?? null;
+  }
+
+  supportsPicture(file: TFile): boolean {
+    return contentTypeFor(file.path).startsWith("image/");
   }
 
   // ---- Lifecycle ----
@@ -140,6 +160,7 @@ export class MapServer {
       ...map,
       fog,
       brushLoaded: map.store.state.fog.brush,
+      picture: null,
       unsubscribe: map.store.subscribe((e) => this.onStoreEvent(e)),
     };
     const tokens = map.store.state.tokens;
@@ -161,6 +182,38 @@ export class MapServer {
   private unpublishInternal(): void {
     this.active?.unsubscribe();
     this.active = null;
+  }
+
+  /** Present an arbitrary vault image to all connected player clients. */
+  presentPicture(file: TFile): boolean {
+    const a = this.active;
+    if (!a || !this.supportsPicture(file)) return false;
+
+    const id = `pic_${randomBytes(12).toString("hex")}`;
+    const picture: PublishedPicture = {
+      info: {
+        id,
+        name: file.basename,
+        width: null,
+        height: null,
+        imagePath: `${GM_MAP_IMAGE_PREFIX}${encodeURIComponent(a.config.id)}/picture/${id}/image`,
+      },
+      file,
+    };
+    a.picture = picture;
+    this.broadcast({ type: "picture", picture: picture.info });
+    this.log(`presenting picture "${file.path}" to ${this.clients.size} client(s)`);
+    return true;
+  }
+
+  /** Dismiss the presented picture and return all clients to the map. */
+  dismissPicture(): boolean {
+    const a = this.active;
+    if (!a || !a.picture) return false;
+    a.picture = null;
+    this.broadcast({ type: "picture", picture: null });
+    this.log(`dismissed presented picture for ${this.clients.size} client(s)`);
+    return true;
   }
 
   /** HTTP base URLs (one per non-internal IPv4 interface) for the QR / display. */
@@ -255,7 +308,11 @@ export class MapServer {
       gridColor: this.settings().gridColor,
       gridLineWidth: this.settings().gridLineWidth,
     };
-    return { type: "hello", info, snapshot: buildSnapshot(a.store, this.isRevealed) };
+    const snapshot = {
+      ...buildSnapshot(a.store, this.isRevealed),
+      presentedPicture: a.picture?.info,
+    };
+    return { type: "hello", info, snapshot };
   }
 
   // ---- WebSocket ----
@@ -361,6 +418,15 @@ export class MapServer {
       void this.serveTokenImage(decodeURIComponent(tok[1]), decodeURIComponent(tok[2]), res);
       return;
     }
+    const pic = url.match(/^\/map\/([^/]+)\/picture\/([^/]+)\/image$/);
+    if (pic) {
+      void this.servePictureImage(
+        decodeURIComponent(pic[1]),
+        decodeURIComponent(pic[2]),
+        res
+      );
+      return;
+    }
     const m = url.match(/^\/map\/(.+)\/image$/);
     if (m) {
       void this.serveImage(decodeURIComponent(m[1]), res);
@@ -445,6 +511,33 @@ export class MapServer {
       res.end(Buffer.from(buf));
     } catch (e) {
       this.warn(`failed to read token image for "${tokenId}":`, (e as Error).message);
+      res.writeHead(500);
+      res.end();
+    }
+  }
+
+  /** Serve only pictures advertised by the active session's opaque ID index. */
+  private async servePictureImage(
+    id: string,
+    pictureId: string,
+    res: ServerResponse
+  ): Promise<void> {
+    const a = this.active;
+    const picture = a?.picture;
+    if (!a || a.config.id !== id || picture?.info.id !== pictureId) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    try {
+      const buf = await this.app.vault.adapter.readBinary(picture.file.path);
+      res.writeHead(200, {
+        "Content-Type": contentTypeFor(picture.file.path),
+        "Cache-Control": "no-store",
+      });
+      res.end(Buffer.from(buf));
+    } catch (e) {
+      this.warn(`failed to read picture "${picture.info.name}":`, (e as Error).message);
       res.writeHead(500);
       res.end();
     }

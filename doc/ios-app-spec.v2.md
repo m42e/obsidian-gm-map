@@ -2,16 +2,16 @@
 
 This document specifies a native **SwiftUI iPad app** that connects to the GM Map
 Obsidian plugin over the local network, renders the player‑safe map, and lets
-players pan/zoom, move their own tokens, drop attention pings, and measure
-distances.
+players pan/zoom, move their own tokens, drop attention pings, measure
+distances, and view pictures the DM presents from Obsidian.
 
-The plugin side (server + protocol) is already implemented. This spec is the
-contract the app must follow. Nothing here requires changes to the plugin; if a
-change is needed, update both this file and `src/server/protocol.ts` together.
+The plugin side (server + protocol), including the picture-presentation
+extension in §11, is implemented. This spec is the contract the app must follow.
 
 - **Target:** iPadOS 16+ (SwiftUI `Canvas` requires iOS 15; 16 recommended).
 - **No authentication.** The server is LAN‑only and trusted.
-- **Transport:** one WebSocket for state + one HTTP GET for the map image.
+- **Transport:** one WebSocket for state + HTTP GET requests for map, token, and
+  picture images.
 - **Source of truth:** the DM's machine. The app is a thin client; it sends
   intents (move token, ping) and renders whatever the server broadcasts.
 
@@ -87,10 +87,20 @@ in sync.
     "spells": [ /* NetSpell[] */ ],
     "fog":    { /* NetFog */ },
     "gridOverlay": false,
-    "pan": { "x": 0, "y": 0 }
+    "pan": { "x": 0, "y": 0 },
+    "presentedPicture": {
+      "id": "pic_7f8c2a",
+      "name": "The Sapphire Wyrm",
+      "width": null,
+      "height": null,
+      "imagePath": "/map/dungeon-1/picture/pic_7f8c2a/image"
+    }
   }
 }
 ```
+
+`snapshot.presentedPicture` is optional. When present, fetch it and show it over
+the map immediately; this restores the DM's presentation after a reconnect.
 
 **`fog`** — fog reveal changed (grid cell or freeform brush).
 
@@ -131,6 +141,26 @@ freely afterwards.
 
 ```json
 { "type": "ping", "ping": { "x": 512, "y": 300, "color": "#ff5252", "createdAt": 1718900000000 } }
+```
+
+**`picture`** — the DM selected an image in Obsidian. A picture object means
+fetch and present it full-screen; `null` means dismiss it and return to the map.
+
+```json
+{
+  "type": "picture",
+  "picture": {
+    "id": "pic_7f8c2a",
+    "name": "The Sapphire Wyrm",
+    "width": null,
+    "height": null,
+    "imagePath": "/map/dungeon-1/picture/pic_7f8c2a/image"
+  }
+}
+```
+
+```json
+{ "type": "picture", "picture": null }
 ```
 
 **`idle`** — no map currently shared. Show the waiting state.
@@ -180,8 +210,11 @@ NetMapInfo{ mapId: String, imageWidth: Int, imageHeight: Int,
             imagePath: String, feetPerCell: Double, cellSize: Double,
             gridColor: String, gridLineWidth: Double }
 
+NetPicture { id: String, name: String, width: Int?, height: Int?,
+             imagePath: String }
+
 NetSnapshot { tokens: [NetToken], spells: [NetSpell], fog: NetFog,
-              gridOverlay: Bool, pan: {x,y}? }
+              gridOverlay: Bool, pan: {x,y}?, presentedPicture: NetPicture? }
 ```
 
 All coordinates and sizes that touch the map are in **image‑pixel space** unless
@@ -245,12 +278,21 @@ struct NetMapInfo: Codable, Equatable {
     var gridLineWidth: Double
 }
 
+struct NetPicture: Codable, Identifiable, Equatable {
+    var id: String
+    var name: String
+    var width: Int?
+    var height: Int?
+    var imagePath: String
+}
+
 struct NetSnapshot: Codable, Equatable {
     var tokens: [NetToken]
     var spells: [NetSpell]
     var fog: NetFog
     var gridOverlay: Bool
     var pan: CGPointCodable?
+    var presentedPicture: NetPicture?
 }
 
 struct CGPointCodable: Codable, Equatable { var x: Double; var y: Double }
@@ -267,6 +309,7 @@ enum ServerMessage {
     case grid(fog: NetFog, gridOverlay: Bool)
     case pan(CGPointCodable)
     case ping(NetPing)
+    case picture(NetPicture?)
     case idle
 }
 
@@ -304,6 +347,10 @@ extension ServerMessage {
             struct M: Decodable { let ping: NetPing }
             guard let m = try? d.decode(M.self, from: data) else { return nil }
             self = .ping(m.ping)
+        case "picture":
+          struct M: Decodable { let picture: NetPicture? }
+          guard let m = try? d.decode(M.self, from: data) else { return nil }
+          self = .picture(m.picture)
         case "idle":
             self = .idle
         default:
@@ -347,6 +394,8 @@ final class MapClient: ObservableObject {
     @Published var fog: NetFog?
     @Published var gridOverlay = false
     @Published var image: UIImage?
+    @Published var presentedPicture: NetPicture?
+    @Published var presentedImage: UIImage?
     @Published var connection: ConnectionState = .disconnected
     @Published private(set) var pings: [NetPing] = []   // transient
 
@@ -370,7 +419,15 @@ Apply messages on the main actor:
 - `pan`: animate the viewport to center the point.
 - `ping`: append to `pings`; prune entries older than 3000 ms; keep an animation
   timer running while any ping is active.
-- `idle`: clear `info`/`image`; show the waiting screen.
+- `picture`: replace `presentedPicture`. For a non-null value, clear the previous
+  `presentedImage` and fetch `base + picture.imagePath`; for `null`, clear both
+  fields and reveal the unchanged map.
+- `idle`: clear `info`, map image, and presented picture; show the waiting screen.
+
+On `hello`, apply `snapshot.presentedPicture` in the same way as a `picture`
+message. Guard asynchronous picture fetches by ID: only install the decoded
+image if its ID still equals `presentedPicture?.id`, because the DM can replace
+or dismiss it while the HTTP request is in flight.
 
 The image must be fetched **after** each `hello` because the map can change. Add a
 cache‑buster only if you cache (`Cache-Control: no-store` is already set server
@@ -645,6 +702,7 @@ GmMapPlayer/
     Models.swift                  // NetToken/NetSpell/NetFog/...
   Map/
     MapScreen.swift               // Canvas + gestures + toolbar
+    PresentedPictureView.swift     // DM-controlled full-screen image viewer
     Viewport.swift                // coordinate transforms
     FogRenderer.swift             // builds the fog UIImage from NetFog
     SpellGeometry.swift           // shape outlines (port of SpellLayer.geometry)
@@ -685,6 +743,9 @@ For the app:
     circle; a token without one still renders the colored circle + initial.
     Fetch `http://<host>:3010/map/<id>/token/<tokenId>/image` → the token bytes;
     a non‑player, fogged token's id returns **404** (art is not leaked).
+11. In Obsidian, right-click an ordinary image and choose **Show on iPad**. The
+    image replaces the map on connected clients without editing the image or
+    map note. **Hide picture on iPad** returns every client to the map.
 
 ---
 
@@ -709,6 +770,8 @@ For the app:
 - **Token pictures** are optional and fetched lazily over HTTP (see §10). A token
   without `imagePath` renders exactly as before. Cache decoded token images by
   `imagePath`; the same path always maps to the same picture for a given map.
+- **Presented pictures are DM-controlled.** Keep the map state and viewport in
+  memory underneath the picture so dismissal returns to exactly the same view.
 
 ---
 
@@ -779,3 +842,95 @@ if let img = tokenImageCache[token.imagePath ?? ""] {
     // colored circle + initial (existing behavior)
 }
 ```
+
+---
+
+## 11. Protocol extension: DM-presented pictures
+
+After sharing a map, the DM can right-click any supported image in Obsidian and
+choose **Show on iPad**. This does not modify the image, require an embed in the
+map note, or require frontmatter, tags, filename conventions, or GM Map syntax.
+It is a temporary DM-controlled presentation over the existing map session.
+
+The context-menu action supports png, jpeg/jpg, webp, gif, svg, and bmp files.
+The plugin assigns the selected file a new opaque ID and exposes it only at:
+
+```
+/map/<mapId>/picture/<pictureId>/image
+```
+
+The WebSocket broadcast contains only player-safe metadata:
+
+```json
+{
+  "id": "pic_7f8c2a",
+  "name": "The Sapphire Wyrm",
+  "width": 1600,
+  "height": 900,
+  "imagePath": "/map/dungeon-1/picture/pic_7f8c2a/image"
+}
+```
+
+The vault path is never sent. The HTTP route validates the opaque ID against the
+single picture currently presented by the active map session. It returns `404`
+for an old, invented, dismissed, or different-map ID and serves valid requests
+with the source `Content-Type` and `Cache-Control: no-store`.
+
+### 11.1 Wire and reconnect behavior
+
+The shared wire model is:
+
+```ts
+export interface NetPicture {
+  id: string;
+  name: string;
+  width: number | null;
+  height: number | null;
+  imagePath: string;
+}
+```
+
+`{ type: "picture", picture: NetPicture }` presents or replaces the image;
+`{ type: "picture", picture: null }` dismisses it. The active `NetPicture` is
+also included as optional `hello.snapshot.presentedPicture`, so a newly
+connected or reconnected client enters the same presentation. It is ephemeral:
+sharing a different map or unsharing clears it.
+
+Clients that do not recognize the new message ignore it and remain on the map.
+No map-state persistence changes are required.
+
+### 11.2 Obsidian experience
+
+- **Show:** right-click a supported image file, link, or file-backed embed and
+  choose **Show on iPad**. A notice confirms how many clients received it.
+- **Replace:** invoke **Show on iPad** on another image; the new image replaces
+  the previous one immediately and the old HTTP URL becomes invalid.
+- **Hide:** right-click the currently shown image and choose **Hide from iPad**,
+  or run **GM Map: Hide picture on iPad** from the command palette.
+- A map must already be shared. Otherwise the plugin shows a notice asking the
+  DM to share a map first.
+
+### 11.3 iPad experience
+
+Present the fetched picture above the whole map UI on a neutral background,
+aspect-fit by default. Keep the map view alive underneath it. Allow pinch zoom,
+drag pan while zoomed, and double-tap to toggle between fit and a readable zoom.
+The presentation is controlled by the DM, so do not add a local close button.
+
+Show a centered progress indicator while loading. On an HTTP or decode failure,
+show the picture name and a compact retry action, but continue listening so a
+replacement or dismissal takes effect. When `picture` becomes `null`, remove
+the viewer and reveal the map with its previous viewport and interaction state.
+
+### 11.4 Acceptance checks
+
+1. Share a map, right-click an unrelated vault image, choose **Show on iPad**,
+  and verify it appears without changing that image or the map note.
+2. Present a second image and verify it immediately replaces the first; the old
+  image URL now returns `404`.
+3. Dismiss through the image menu and through the command palette; each returns
+  clients to their unchanged map viewport.
+4. Present an image with no client connected, then connect: the `hello` snapshot
+  restores the picture.
+5. An invented picture ID, a dismissed ID, and any ID after unsharing return
+  `404`.
